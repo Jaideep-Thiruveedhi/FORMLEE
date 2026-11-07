@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Formlee — Apply Assistant</title>
+    <link rel="stylesheet" href="sidepanel.css" />
+  </head>
+  <body>
+    <div id="app">
+      <!-- Header -->
+      <header class="sp-header">
+        <div class="sp-brand">
+          <div class="sp-logo" aria-hidden="true">
+            <svg viewBox="0 0 40 40" width="24" height="24">
+              <rect x="6" y="6" width="28" height="28" rx="8" fill="#3b82f6" />
+              <text x="20" y="26" text-anchor="middle" fill="white" font-size="16" font-weight="700">F</text>
+            </svg>
+          </div>
+          <div>
+            <h1 class="sp-title">Formlee</h1>
+            <p class="sp-subtitle">Application assistant</p>
+          </div>
+        </div>
+        <div class="sp-status" id="connection-chip" aria-live="polite">
+          <span class="sp-status-dot" id="connection-dot"></span>
+          <span class="sp-status-label" id="connection-label">Checking…</span>
+        </div>
+      </header>
+
+      <!-- Connect / pairing -->
+      <section class="sp-card" id="connect-section" hidden>
+        <div class="sp-card-header">
+          <h2 class="sp-card-title">Connect Formlee</h2>
+          <span class="sp-chip" id="connect-chip">Not connected</span>
+        </div>
+        <p class="sp-hint">
+          1. On the Formlee agent page, press <strong>Generate pairing code</strong>.<br />
+          2. Paste the code below — it works only for this browser's workspace and expires in 15 minutes.
+        </p>
+        <div class="sp-pair-row">
+          <input class="sp-pair-input" id="pair-code" type="text" autocomplete="off" spellcheck="false" placeholder="ABCDE-FGHJK-MNPQR" />
+          <button class="sp-btn primary sm" id="pair-btn" type="button">Connect</button>
+        </div>
+        <p class="sp-pair-error" id="pair-error" hidden></p>
+      </section>
+
+      <!-- Pet companion -->
+      <section class="sp-pet" id="pet-section" aria-live="polite">
+        <div class="sp-pet-avatar" id="pet-avatar" aria-hidden="true"></div>
+        <div class="sp-pet-bubble">
+          <p class="sp-pet-message" id="pet-message">Hello — I’m Formlee. Open a supported exam page and I’ll help you fill it safely.</p>
+          <span class="sp-pet-state" id="pet-state">idle</span>
+        </div>
+      </section>
+
+      <!-- Current application -->
+      <section class="sp-card" id="current-app-section">
+        <div class="sp-card-header">
+          <h2 class="sp-card-title">Current page</h2>
+          <span class="sp-chip" id="adapter-chip">No adapter</span>
+        </div>
+        <p class="sp-domain" id="current-domain">—</p>
+        <p class="sp-page-kind" id="page-kind">Open an examination portal or the Formlee demo form.</p>
+        <div class="sp-banner" id="adapter-banner" hidden></div>
+        <div class="sp-progress" id="readiness-progress" hidden>
+          <div class="sp-progress-bar" id="readiness-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></div>
+          <span class="sp-progress-label" id="readiness-label">0% ready</span>
+        </div>
+      </section>
+
+      <!-- Agent chat -->
+      <section class="sp-card" id="chat-section">
+        <div class="sp-card-header">
+          <h2 class="sp-card-title">Ask Formlee</h2>
+        </div>
+        <div class="sp-chat-messages" id="chat-messages">
+          <p class="sp-hint">Ask a question about your vault, readiness, or a supported exam page.</p>
+        </div>
+        <div class="sp-chat-input-row">
+          <input class="sp-chat-input" id="chat-input" type="text" autocomplete="off" placeholder="Ask anything…" />
+          <button class="sp-btn primary sm" id="chat-send" type="button">Send</button>
+        </div>
+        <div class="sp-chat-actions" id="chat-actions" hidden></div>
+      </section>
+
+      <!-- Task orchestrator -->
+      <section class="sp-card" id="task-section">
+        <div class="sp-card-header">
+          <h2 class="sp-card-title">Task</h2>
+          <span class="sp-chip" id="task-status-chip">No task</span>
+        </div>
+        <div id="task-create-row">
+          <input class="sp-task-input" id="task-objective" type="text" autocomplete="off" placeholder="e.g. Prepare my JEE Main application" />
+          <button class="sp-btn primary sm" id="task-create-btn" type="button">Start</button>
+        </div>
+        <div id="task-detail" hidden>
+          <p class="sp-task-objective" id="task-objective-display"></p>
+          <div class="sp-task-progress" id="task-progress" hidden>
+            <div class="sp-task-progress-bar" id="task-progress-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></div>
+            <span class="sp-task-progress-label" id="task-progress-label">0%</span>
+          </div>
+          <p class="sp-task-message" id="task-message"></p>
+          <ul class="sp-task-steps" id="task-steps"></ul>
+          <div class="sp-task-actions" id="task-actions">
+            <button class="sp-btn primary sm" id="task-run-btn" type="button">Run</button>
+            <button class="sp-btn sm" id="task-pause-btn" type="button">Pause</button>
+            <button class="sp-btn sm" id="task-resume-btn" type="button" hidden>Resume</button>
+            <button class="sp-btn danger sm" id="task-cancel-btn" type="button">Cancel</button>
+          </div>
+          <div class="sp-task-pending" id="task-pending" hidden>
+            <button class="sp-btn primary sm" id="task-pending-btn" type="button">Run pending action</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Main workspace -->
+      <section class="sp-card">
+        <div class="sp-card-header">
+          <h2 class="sp-card-title">Workspace</h2>
+        </div>
+
+        <div class="sp-actions">
+          <button class="sp-btn primary" id="scan-btn" type="button">
+            <span class="sp-btn-icon" aria-hidden="true">🔍</span>
+            <span>Scan this form</span>
+          </button>
+          <button class="sp-btn" id="fill-btn" type="button" disabled>
+            <span class="sp-btn-icon" aria-hidden="true">✓</span>
+            <span>Fill approved fields</span>
+          </button>
+          <button class="sp-btn ghost" id="clear-btn" type="button" disabled>Clear plan</button>
+        </div>
+
+        <div class="sp-plan" id="plan-empty">
+          <p class="sp-hint">Scan a supported form to see which fields Formlee can fill from your Student Information Vault.</p>
+        </div>
+
+        <div class="sp-plan" id="plan-container" hidden>
+          <div class="sp-plan-summary" id="plan-summary"></div>
+          <ul class="sp-plan-list" id="plan-list"></ul>
+          <p class="sp-safety" id="plan-safety">Only checked fields will be filled. Password, OTP, CAPTCHA, payment, declaration and upload fields are never included.</p>
+          <div class="sp-your-turn" id="your-turn-notice" role="status" aria-live="polite">
+            <strong>Your Turn:</strong> If the portal asks for a CAPTCHA, OTP, payment, declaration, document upload or final submission, complete it directly on the portal. Formlee will not perform those actions.
+          </div>
+        </div>
+
+        <div class="sp-results" id="results-container" hidden>
+          <h3 class="sp-section-subtitle">Results</h3>
+          <ul class="sp-results-list" id="results-list"></ul>
+        </div>
+      </section>
+
+      <!-- Missing profile information -->
+      <section class="sp-card" id="missing-section" hidden>
+        <div class="sp-card-header">
+          <h2 class="sp-card-title">Missing profile info</h2>
+          <button class="sp-btn ghost sm" id="missing-fix-btn" type="button">Fix in Vault</button>
+        </div>
+        <ul class="sp-missing-list" id="missing-list"></ul>
+      </section>
+
+      <!-- Readiness -->
+      <section class="sp-card" id="readiness-section">
+        <div class="sp-card-header">
+          <h2 class="sp-card-title">Readiness</h2>
+          <button class="sp-btn ghost sm" id="refresh-readiness-btn" type="button">Refresh</button>
+        </div>
+        <div class="sp-readiness" id="readiness-container">
+          <p class="sp-hint">Connect to see your application readiness.</p>
+        </div>
+      </section>
+
+      <!-- Activity -->
+      <section class="sp-card">
+        <div class="sp-card-header">
+          <h2 class="sp-card-title">Activity</h2>
+          <button class="sp-btn ghost sm" id="clear-activity-btn" type="button">Clear</button>
+        </div>
+        <ul class="sp-activity" id="activity-list">
+          <li class="sp-activity-item info">Formlee side panel opened.</li>
+        </ul>
+      </section>
+
+      <!-- Footer links -->
+      <footer class="sp-footer">
+        <a class="sp-link" id="open-profile-link" href="#" target="_blank">Student Vault</a>
+        <a class="sp-link" id="open-hub-link" href="#" target="_blank">Application Hub</a>
+        <a class="sp-link" id="open-agent-link" href="#">Agent page</a>
+        <a class="sp-link" id="open-demo-link" href="#">Demo form</a>
+        <button class="sp-link" id="disconnect-btn" type="button">Disconnect</button>
+      </footer>
+    </div>
+
+    <script src="shared/formlee-config.js"></script>
+    <script src="shared/agent-ui.js"></script>
+    <script src="shared/pet-core.js"></script>
+    <script src="shared/agent-core.js"></script>
+    <script src="sidepanel.js"></script>
+  </body>
+</html>

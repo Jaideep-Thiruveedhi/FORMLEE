@@ -7,7 +7,15 @@ import {
   DOCUMENT_VERIFICATION_NOTE,
 } from '@/lib/apply-ai/documents'
 import { isDocumentApplicable, isDocumentUploaded } from '@/lib/apply-ai/requirements'
-import { useDeleteDocument, useDocuments, useRenameDocument, useUploadDocument } from '@/lib/apply-ai/api-client'
+import {
+  useDeleteDocument,
+  useDocumentVersions,
+  useDocuments,
+  useRenameDocument,
+  useUpdateDocumentMetadata,
+  useUploadDocument,
+} from '@/lib/apply-ai/api-client'
+import { CERTIFICATE_DOCUMENT_TYPES } from '@/lib/apply-ai/documents'
 import type { DocumentId, DocumentTypeDef, UploadedDocumentDTO } from '@/lib/apply-ai/types'
 import type { ProfileLike } from '@/lib/apply-ai/requirements'
 import { UnverifiedBadge } from './status-badge'
@@ -79,7 +87,7 @@ export function DocumentManager({ documentsReady, profileLike }: { documentsRead
       <div className='mt-8' id='document-type-OTHER'>
         <h3 className='text-sm font-semibold text-foreground'>Other examination-specific documents</h3>
         <p className='text-[11px] text-muted-foreground mt-0.5 mb-3 max-w-2xl'>
-          For anything an official notification asks for beyond the list above. You name them — Rankora never
+          For anything an official notification asks for beyond the list above. You name them — Formlee never
           invents or assumes additional requirements.
         </p>
 
@@ -155,7 +163,15 @@ function DocumentTypeRow({
           </div>
         </div>
 
-        {uploaded && activeDoc && <ActiveDocRow doc={activeDoc} />}
+        {uploaded && activeDoc && (
+          <>
+            <ActiveDocRow doc={activeDoc} />
+            {CERTIFICATE_DOCUMENT_TYPES.includes(docDef.id) && (
+              <CertificateMetadataEditor doc={activeDoc} />
+            )}
+            <VersionHistory doc={activeDoc} />
+          </>
+        )}
         <UploadControls documentType={docDef.id} replaceMode={uploaded} />
       </div>
     </li>
@@ -171,7 +187,7 @@ function ActiveDocRow({ doc }: { doc: UploadedDocumentDTO }) {
         <span className='text-xs text-foreground truncate flex-1 min-w-0'>
           <span className='font-medium'>{doc.originalName}</span> · {mimeShort(doc.mimeType)} ·{' '}
           {formatBytes(doc.sizeBytes)} · uploaded {formatDate(doc.createdAt)}
-          {doc.versions > 1 && ` · replaced ${doc.versions} times`}
+          {doc.versions > 1 && ` · version ${doc.versions} (older versions kept)`}
         </span>
         <div className='flex items-center gap-2 shrink-0'>
           <a
@@ -199,6 +215,205 @@ function ActiveDocRow({ doc }: { doc: UploadedDocumentDTO }) {
       </div>
       {deleteMutation.isError && (
         <p className='mt-2 text-[11px] text-destructive'>{(deleteMutation.error as Error).message}</p>
+      )}
+    </div>
+  )
+}
+
+const CERTIFICATE_INPUT =
+  'w-full px-2.5 py-1.5 border border-border rounded-lg bg-background text-xs focus:ring-2 focus:ring-primary focus:border-transparent outline-none'
+
+/**
+ * Editable certificate metadata. Values are student-entered and self-reported;
+ * saving them never claims legal validity or official verification. The same
+ * metadata is mirrored onto the linked Category & Certificates vault entry.
+ */
+function CertificateMetadataEditor({ doc }: { doc: UploadedDocumentDTO }) {
+  const mutation = useUpdateDocumentMetadata()
+  const [open, setOpen] = useState(false)
+  const [certificateNumber, setCertificateNumber] = useState(doc.certificate.certificateNumber ?? '')
+  const [issuingAuthority, setIssuingAuthority] = useState(doc.certificate.issuingAuthority ?? '')
+  const [issuingState, setIssuingState] = useState(doc.certificate.issuingState ?? '')
+  const [issueDate, setIssueDate] = useState(doc.certificate.issueDate ?? '')
+  const [validUntil, setValidUntil] = useState(doc.certificate.validUntil ?? '')
+  const [financialYear, setFinancialYear] = useState(doc.certificate.financialYear ?? '')
+  const [verificationStatus, setVerificationStatus] = useState<'SELF_REPORTED' | 'STUDENT_CONFIRMED'>(
+    doc.certificate.verificationStatus === 'STUDENT_CONFIRMED' ? 'STUDENT_CONFIRMED' : 'SELF_REPORTED'
+  )
+
+  if (!open) {
+    return (
+      <div className='pl-12'>
+        <button
+          type='button'
+          onClick={() => setOpen(true)}
+          className='px-2.5 py-1 text-[11px] font-medium text-muted-foreground hover:text-foreground border border-border rounded-lg transition-colors'
+        >
+          {doc.certificate.certificateNumber || doc.certificate.issuingAuthority
+            ? 'Edit certificate details'
+            : 'Add certificate details'}
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <div className='pl-12'>
+      <div className='rounded-xl border border-border bg-muted/20 p-3'>
+        <p className='text-[11px] font-semibold text-foreground'>Certificate details (optional)</p>
+        <p className='text-[11px] text-muted-foreground mt-0.5'>
+          Copy values exactly as printed. These are self-reported; Formlee does not verify certificates.
+        </p>
+
+        <div className='grid sm:grid-cols-2 gap-2 mt-2'>
+          <label className='text-[11px] text-foreground'>
+            Certificate number
+            <input value={certificateNumber} onChange={e => setCertificateNumber(e.target.value)} className={CERTIFICATE_INPUT + ' mt-0.5'} />
+          </label>
+          <label className='text-[11px] text-foreground'>
+            Issuing authority
+            <input value={issuingAuthority} onChange={e => setIssuingAuthority(e.target.value)} className={CERTIFICATE_INPUT + ' mt-0.5'} />
+          </label>
+          <label className='text-[11px] text-foreground'>
+            Issuing state / jurisdiction
+            <input value={issuingState} onChange={e => setIssuingState(e.target.value)} className={CERTIFICATE_INPUT + ' mt-0.5'} />
+          </label>
+          <label className='text-[11px] text-foreground'>
+            Financial year / validity period
+            <input value={financialYear} onChange={e => setFinancialYear(e.target.value)} className={CERTIFICATE_INPUT + ' mt-0.5'} />
+          </label>
+          <label className='text-[11px] text-foreground'>
+            Issue date
+            <input type='date' value={issueDate} onChange={e => setIssueDate(e.target.value)} className={CERTIFICATE_INPUT + ' mt-0.5'} />
+          </label>
+          <label className='text-[11px] text-foreground'>
+            Valid until (if stated)
+            <input type='date' value={validUntil} onChange={e => setValidUntil(e.target.value)} className={CERTIFICATE_INPUT + ' mt-0.5'} />
+          </label>
+          <label className='text-[11px] text-foreground sm:col-span-2'>
+            Certificate status
+            <select
+              value={verificationStatus}
+              onChange={e =>
+                setVerificationStatus(
+                  e.target.value === 'STUDENT_CONFIRMED' ? 'STUDENT_CONFIRMED' : 'SELF_REPORTED'
+                )
+              }
+              className={CERTIFICATE_INPUT + ' mt-0.5'}
+            >
+              <option value='SELF_REPORTED'>Self-reported — not yet checked by me</option>
+              <option value='STUDENT_CONFIRMED'>I have checked the details against my certificate</option>
+            </select>
+          </label>
+        </div>
+
+        {mutation.isError && (
+          <p className='mt-2 text-[11px] text-destructive'>
+            {mutation.error instanceof Error ? mutation.error.message : 'Could not save certificate details'}
+          </p>
+        )}
+
+        <div className='flex items-center gap-2 mt-2'>
+          <button
+            type='button'
+            disabled={mutation.isPending}
+            onClick={() => {
+              mutation.mutate(
+                {
+                  documentId: doc.id,
+                  metadata: {
+                    certificateNumber: certificateNumber.trim() || null,
+                    issuingAuthority: issuingAuthority.trim() || null,
+                    issuingState: issuingState.trim() || null,
+                    issueDate: issueDate || null,
+                    validUntil: validUntil || null,
+                    financialYear: financialYear.trim() || null,
+                    verificationStatus,
+                  },
+                },
+                { onSuccess: () => setOpen(false) }
+              )
+            }}
+            className='px-3 py-1.5 text-[11px] font-semibold text-primary-foreground bg-primary rounded-lg hover:bg-primary/90 disabled:opacity-50'
+          >
+            {mutation.isPending ? 'Saving…' : 'Save certificate details'}
+          </button>
+          <button
+            type='button'
+            onClick={() => setOpen(false)}
+            className='px-2.5 py-1.5 text-[11px] text-muted-foreground border border-border rounded-lg hover:bg-muted'
+          >
+            Cancel
+          </button>
+          {doc.certificate.lastConfirmedAt && (
+            <span className='text-[11px] text-muted-foreground'>
+              Last confirmed {formatDate(doc.certificate.lastConfirmedAt)}
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/** Authorized history of retained private files for one document type. */
+function VersionHistory({ doc }: { doc: UploadedDocumentDTO }) {
+  const [open, setOpen] = useState(false)
+  const query = useDocumentVersions(open ? doc.id : null, open)
+
+  if (!doc.hasPreviousVersions) return null
+
+  return (
+    <div className='pl-12'>
+      <button
+        type='button'
+        onClick={() => setOpen(value => !value)}
+        className='px-2.5 py-1 text-[11px] font-medium text-muted-foreground hover:text-foreground border border-border rounded-lg transition-colors'
+      >
+        {open ? 'Hide version history' : 'Version history'}
+      </button>
+
+      {open && (
+        <div className='mt-2 rounded-xl border border-border bg-muted/20 p-3'>
+          <p className='text-[11px] text-muted-foreground'>
+            Replaced files stay in private storage. Deleting a version is blocked while your vault or a prepared
+            application references it.
+          </p>
+          {query.isLoading && <p className='text-[11px] text-muted-foreground mt-2'>Loading versions…</p>}
+          {query.isError && (
+            <p className='text-[11px] text-destructive mt-2'>{(query.error as Error).message}</p>
+          )}
+          {query.data && (
+            <ul className='mt-2 space-y-1.5'>
+              {query.data.documents.map(version => (
+                <li key={version.id} className='flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]'>
+                  <span
+                    className={
+                      'px-1.5 py-0.5 rounded border font-semibold ' +
+                      (version.isCurrent
+                        ? 'bg-green-50 text-green-700 border-green-200'
+                        : 'bg-muted text-muted-foreground border-border')
+                    }
+                  >
+                    {version.isCurrent ? 'Current' : `v${version.versions}`}
+                  </span>
+                  <span className='text-foreground font-medium truncate max-w-[18ch]'>{version.originalName}</span>
+                  <span className='text-muted-foreground'>
+                    {formatDate(version.createdAt)} · {formatBytes(version.sizeBytes)}
+                  </span>
+                  <a
+                    href={`/api/apply/documents/${encodeURIComponent(version.id)}/file`}
+                    target='_blank'
+                    rel='noreferrer'
+                    className='font-semibold text-primary hover:underline'
+                  >
+                    View
+                  </a>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       )}
     </div>
   )
@@ -335,7 +550,11 @@ function UploadControls({ documentType, replaceMode }: { documentType: DocumentI
         >
           {uploadMutation.isPending ? 'Uploading…' : replaceMode ? 'Replace file' : 'Upload file'}
         </button>
-        <span className='text-[11px] text-muted-foreground'>JPEG, PNG or PDF · up to 5 MB</span>
+        <span className='text-[11px] text-muted-foreground'>
+          {replaceMode
+            ? 'JPEG, PNG or PDF · up to 5 MB · the previous file stays in version history'
+            : 'JPEG, PNG or PDF · up to 5 MB'}
+        </span>
       </div>
       {error && <p className='mt-1.5 text-[11px] text-destructive'>{error}</p>}
     </div>

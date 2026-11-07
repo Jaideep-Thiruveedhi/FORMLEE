@@ -16,7 +16,7 @@ const MOBILE_REGEX = /^\+?[0-9]{10,13}$/
 const PIN_REGEX = /^[0-9]{6}$/
 const DATE_REGEX = /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/
 
-const MAX_YEAR = new Date().getFullYear() + 5
+const MAX_YEAR = new Date().getFullYear() + 6
 
 export type InvalidField = { field: string; message: string }
 
@@ -33,8 +33,11 @@ const optionalEmpty = <T extends z.ZodType>(schema: T, emptyLiteral = '') =>
   z.union([z.literal(emptyLiteral), schema])
 
 const GENDER_VALUES = ['MALE', 'FEMALE', 'TRANSGENDER'] as const
-const CATEGORY_VALUES = ['GENERAL', 'EWS', 'OBC_NCL', 'SC', 'ST'] as const
+const CATEGORY_VALUES = ['GENERAL', 'EWS', 'OBC_NCL', 'SC', 'ST', 'OTHER'] as const
 const MARKS_KIND_VALUES = ['PERCENTAGE', 'GRADE', 'CGPA'] as const
+const CLASS12_STATUS_VALUES = ['APPEARING', 'RESULT_AWAITED', 'PASSED'] as const
+const VERIFICATION_VALUES = ['SELF_REPORTED', 'STUDENT_CONFIRMED'] as const
+const NATIONALITY_VALUES = ['India', 'Other'] as const
 
 const stateValues = STATE_OPTIONS.map(o => o.value)
 
@@ -47,19 +50,24 @@ const dobSchema = z
     return date.getTime() <= Date.now()
   }, { error: 'Enter a real date of birth, not in the future' })
 
+const plainDateSchema = z.string().regex(DATE_REGEX, { error: 'Enter a real date (YYYY-MM-DD)' })
+
 const yearSchema = z
   .string()
   .regex(YEAR_REGEX)
   .refine(value => {
     const year = parseInt(value, 10)
     return year >= 1990 && year <= MAX_YEAR
-  }, { error: `Enter a 4-digit passing year between 1990 and ${MAX_YEAR}` })
+  }, { error: `Enter a 4-digit year between 1990 and ${MAX_YEAR}` })
 
 const emailSchema = z.email().max(120)
 const mobileSchema = z.string().regex(MOBILE_REGEX, {
   error: 'Enter 10–13 digits, e.g., 9876543210',
 })
 const pinSchema = z.string().regex(PIN_REGEX, { error: 'Enter a 6-digit PIN code' })
+const percentageSchema = z.string().regex(PERCENTAGE_REGEX, {
+  error: 'Enter a percentage between 0 and 100, e.g., 92.4',
+})
 
 const cityEntrySchema = z.string().min(1).max(60)
 const cityListSchema = z
@@ -106,29 +114,87 @@ function validateMarksValue(value: string, kind: MarksKind | null | undefined): 
 /* ---------- literal field schemas map ---------- */
 
 const FIELD_SCHEMAS: Record<string, z.ZodType> = {
+  // Personal
   fullName: nonEmptyString(120, 2),
   gender: optionalEmpty(z.enum(GENDER_VALUES)),
   dateOfBirth: dobSchema,
   email: emailSchema,
   mobileNumber: mobileSchema,
+  nationality: optionalEmpty(z.enum(NATIONALITY_VALUES)),
+  nationalityOther: z.string().min(2).max(80),
+
+  // Family
+  fatherName: z.string().min(2).max(120),
+  motherName: z.string().min(2).max(120),
+  guardianName: z.string().min(2).max(120),
+  guardianRelation: z.string().min(1).max(60),
+  parentMobile: mobileSchema,
+  parentEmail: emailSchema,
+  parentOccupation: z.string().max(100),
+
+  // Permanent address
+  permanentAddressLine: nonEmptyString(240, 2),
+  permanentCity: nonEmptyString(80, 2),
+  permanentDistrict: nonEmptyString(80, 2),
+  permanentState: optionalEmpty(z.enum(stateValues as [string, ...string[]])),
+  permanentPinCode: pinSchema,
+  permanentCountry: z.string().min(2).max(80),
+
+  // Current address
+  currentSameAsPermanent: z.boolean(),
+  currentAddressLine: nonEmptyString(240, 2),
+  currentCity: nonEmptyString(80, 2),
+  currentDistrict: nonEmptyString(80, 2),
+  currentState: optionalEmpty(z.enum(stateValues as [string, ...string[]])),
+  currentPinCode: pinSchema,
+  currentCountry: z.string().min(2).max(80),
+
+  // Legacy address (still accepted from older clients)
   addressLine: nonEmptyString(240, 2),
   city: nonEmptyString(80, 2),
   state: optionalEmpty(z.enum(stateValues as [string, ...string[]])),
   pinCode: pinSchema,
+
+  // Class 10
   class10Board: nonEmptyString(80, 2),
+  class10SchoolName: nonEmptyString(160, 2),
   class10PassingYear: yearSchema,
   class10RollNumber: z.string().min(1).max(40),
   class10MarksKind: optionalEmpty(z.enum(MARKS_KIND_VALUES)),
   class10Marks: z.string().min(1).max(24),
+  class10Percentage: percentageSchema,
   class10Subjects: subjectListSchema,
+
+  // Class 12
+  class12Status: optionalEmpty(z.enum(CLASS12_STATUS_VALUES)),
   class12Board: nonEmptyString(80, 2),
+  class12SchoolName: nonEmptyString(160, 2),
+  class12ExamYear: yearSchema,
   class12PassingYear: yearSchema,
   class12RollNumber: z.string().min(1).max(40),
   class12MarksKind: optionalEmpty(z.enum(MARKS_KIND_VALUES)),
   class12Marks: z.string().min(1).max(24),
+  class12Percentage: percentageSchema,
   class12Subjects: subjectListSchema,
+
+  // Category & certificates
   category: optionalEmpty(z.enum(CATEGORY_VALUES)),
+  categoryOtherDetail: z.string().min(2).max(120),
+  categoryConfirmed: z.boolean(),
   pwdStatus: z.boolean(),
+  pwdStatusConfirmed: z.boolean(),
+  pwdCertificateDocumentId: z.string().min(1).max(80),
+  categoryCertificateType: z.string().min(1).max(40),
+  categoryCertificateDocumentId: z.string().min(1).max(80),
+  categoryCertificateNumber: z.string().min(1).max(120),
+  categoryCertificateAuthority: z.string().min(2).max(160),
+  categoryCertificateJurisdiction: z.string().min(2).max(120),
+  categoryCertificateIssueDate: plainDateSchema,
+  categoryCertificateValidUntil: plainDateSchema,
+  categoryCertificateFinancialYear: z.string().min(1).max(40),
+  categoryCertificateVerificationStatus: optionalEmpty(z.enum(VERIFICATION_VALUES)),
+
+  // Preferences
   homeState: optionalEmpty(z.enum(stateValues as [string, ...string[]])),
   preferredExamCities: cityListSchema,
 }
@@ -201,6 +267,11 @@ export function parseProfileDraft(raw: Record<string, unknown>): ProfileDraftRes
     const cleaned = rows.filter(Boolean)
     if (cleaned.length === 0 && Array.isArray(raw[listField])) accepted[listField] = null
     else accepted[listField] = cleaned.length === 0 ? null : cleaned
+  }
+
+  // A PwD certificate link only makes sense while the PwD answer is checked.
+  if (accepted.pwdStatus === false && accepted.pwdCertificateDocumentId !== undefined) {
+    accepted.pwdCertificateDocumentId = null
   }
 
   return { accepted, invalidFields }

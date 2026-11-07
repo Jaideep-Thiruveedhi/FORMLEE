@@ -69,6 +69,17 @@ export function AgentPlanPreviewCard({
         </p>
       ) : (
         <div className='space-y-3'>
+          {plan.adapter !== 'generic' && plan.adapterLabel ? (
+            <div className='rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-[11px] text-amber-900'>
+              <p className='font-semibold'>{plan.adapterLabel}{plan.adapterStatus ? ' · ' + plan.adapterStatus : ''}</p>
+              <p className='mt-0.5'>
+                Documentation-backed mapping of the official Personal Details / Qualification Details labels.
+                Live portal structure is not verified. {plan.page?.kind ? 'Page: ' + pageKindLabel(plan.page.kind) + '.' : ''}
+              </p>
+              {plan.adapterNote ? <p className='mt-1'>{plan.adapterNote}</p> : null}
+            </div>
+          ) : null}
+
           <div className='flex flex-wrap gap-2 text-[11px] font-medium'>
             <span className='px-2 py-0.5 rounded-full border border-border bg-muted/50 text-foreground'>
               {plan.counts.detected} fields
@@ -111,6 +122,9 @@ export function AgentPlanPreviewCard({
                       <span className='ml-1.5 text-[10px] font-normal text-muted-foreground uppercase'>({item.kind})</span>
                       {item.required ? <span className='ml-1 text-red-500' aria-hidden>*</span> : null}
                     </p>
+                    {item.group ? (
+                      <p className='text-[10px] text-muted-foreground truncate'>group: {item.group}</p>
+                    ) : null}
                     <p className='text-[11px] text-muted-foreground mt-0.5'>
                       {item.status === 'mapped' && item.canonical
                         ? '→ ' + (FIELD_LABELS[item.canonical] ?? item.canonical) + (item.firedByAi ? ' (local model)' : '')
@@ -142,4 +156,18 @@ function formatWhen(createdAt: string, planAt: string | null): string {
   } catch {
     return 'just now'
   }
+}
+
+function pageKindLabel(kind: string): string {
+  const labels: Record<string, string> = {
+    personal: 'Personal Details',
+    qualification: 'Qualification Details',
+    exam: 'Examination choices',
+    documents: 'Document uploads',
+    declaration: 'Declaration',
+    login: 'Login / registration',
+    unknown: 'unrecognised JEE Main page',
+    generic: 'generic page',
+  }
+  return labels[kind] ?? kind
 }

@@ -1,7 +1,7 @@
 import Link from 'next/link'
 
 /**
- * Demonstration examination form for the Rankora Apply Agent (V1).
+ * Demonstration examination form for the Formlee Apply Agent (V1).
  *
  * This is a SYNTHETIC page for testing the extension end-to-end locally. It
  * is not an official examination portal, it contains no official deadlines,
@@ -23,10 +23,10 @@ export default function AgentDemoFormPage() {
       <div className='max-w-3xl mx-auto'>
         <div className='bg-amber-50 border border-amber-300 rounded-xl px-4 py-3 mb-6'>
           <p className='text-xs font-bold text-amber-900 uppercase tracking-wide mb-1'>
-            Demonstration form — Rankora Apply Agent V1
+            Demonstration form — Formlee Apply Agent V1
           </p>
           <p className='text-xs text-amber-800'>
-            Synthetic test page for the Rankora browser agent. Not an official examination portal; nothing is
+            Synthetic test page for the Formlee browser agent. Not an official examination portal; nothing is
             submitted, charged or sent anywhere. <Link href='/apply/agent' className='font-semibold underline'>Back to the agent page</Link>.
           </p>
         </div>

@@ -26,21 +26,49 @@ export const AGENT_FILLABLE_FIELDS = [
   'dateOfBirthYear',
   'email',
   'mobileNumber',
+  'nationality',
+  'nationalityOther',
+  'fatherName',
+  'motherName',
+  'guardianName',
+  'guardianRelation',
+  'parentMobile',
+  'parentEmail',
+  'parentOccupation',
   'addressLine',
   'city',
   'state',
   'pinCode',
+  'permanentAddressLine',
+  'permanentCity',
+  'permanentDistrict',
+  'permanentState',
+  'permanentPinCode',
+  'permanentCountry',
+  'currentAddressLine',
+  'currentCity',
+  'currentDistrict',
+  'currentState',
+  'currentPinCode',
+  'currentCountry',
   'class10Board',
+  'class10SchoolName',
   'class10PassingYear',
   'class10RollNumber',
   'class10MarksKind',
   'class10Marks',
+  'class10Percentage',
+  'class12Status',
   'class12Board',
+  'class12SchoolName',
+  'class12ExamYear',
   'class12PassingYear',
   'class12RollNumber',
   'class12MarksKind',
   'class12Marks',
+  'class12Percentage',
   'category',
+  'categoryOtherDetail',
   'pwdStatus',
   'homeState',
   'preferredExamCities',
@@ -86,21 +114,49 @@ const VALUE_KINDS: Record<AgentFillableField, AgentValueKind> = {
   dateOfBirthYear: 'date-part',
   email: 'email',
   mobileNumber: 'tel',
+  nationality: 'enum',
+  nationalityOther: 'text',
+  fatherName: 'text',
+  motherName: 'text',
+  guardianName: 'text',
+  guardianRelation: 'text',
+  parentMobile: 'tel',
+  parentEmail: 'email',
+  parentOccupation: 'text',
   addressLine: 'text',
   city: 'text',
   state: 'enum',
   pinCode: 'text',
+  permanentAddressLine: 'text',
+  permanentCity: 'text',
+  permanentDistrict: 'text',
+  permanentState: 'enum',
+  permanentPinCode: 'text',
+  permanentCountry: 'text',
+  currentAddressLine: 'text',
+  currentCity: 'text',
+  currentDistrict: 'text',
+  currentState: 'enum',
+  currentPinCode: 'text',
+  currentCountry: 'text',
   class10Board: 'text',
+  class10SchoolName: 'text',
   class10PassingYear: 'year',
   class10RollNumber: 'text',
   class10MarksKind: 'enum',
   class10Marks: 'text',
+  class10Percentage: 'text',
+  class12Status: 'enum',
   class12Board: 'text',
+  class12SchoolName: 'text',
+  class12ExamYear: 'year',
   class12PassingYear: 'year',
   class12RollNumber: 'text',
   class12MarksKind: 'enum',
   class12Marks: 'text',
+  class12Percentage: 'text',
   category: 'enum',
+  categoryOtherDetail: 'text',
   pwdStatus: 'boolean',
   homeState: 'enum',
   preferredExamCities: 'city-list',
@@ -169,10 +225,19 @@ export function isUnsafeFieldDescriptor(input: {
 
 export const PROFILE_OPTION_SETS = {
   state: STATE_OPTIONS.map(o => ({ value: o.value, label: o.label })),
+  nationality: [
+    { value: 'India', label: 'India' },
+    { value: 'Other', label: 'Other' },
+  ],
   gender: [
     { value: 'MALE', label: 'Male' },
     { value: 'FEMALE', label: 'Female' },
     { value: 'TRANSGENDER', label: 'Transgender' },
+  ],
+  class12Status: [
+    { value: 'APPEARING', label: 'Appearing' },
+    { value: 'RESULT_AWAITED', label: 'Result awaited' },
+    { value: 'PASSED', label: 'Passed' },
   ],
   category: [
     { value: 'GENERAL', label: 'General' },
@@ -254,9 +319,12 @@ const CLASS_10_WORDS = /\b(10|10th|x|xth|ten|tenth|sslc|matric|matriculation)\b/
 const CLASS_12_WORDS = /\b(12|12th|xii|xiith|twelve|twelfth|hsc|intermediate|inter|senior secondary|sr secondary)\b/
 const BOARD_HINT = /\b(board|university of secondary|council)\b/
 const PASSING_YEAR_HINT = /\b(year of passing|passing year|pass out year|passed out|year of pass|passing)\b|\byear\b.*\b(pass|passed)\b/
+const EXAM_YEAR_HINT = /\b(year of appearing|appearing year|year of examination|examination year|exam year)\b/
 const ROLL_HINT = /\broll\b/
 const MARKS_HINT = /\b(marks|mark obtained|marks obtained|percentage obtained|score|aggregate)\b/
 const MARKS_KIND_HINT = /\b(format|kind|type|scheme)\b.*\b(marks|percentage|grade)\b|\bmarks\b.*\b(format|kind|type|scheme)\b/
+const PERCENTAGE_HINT = /\b(percentage|percent|aggregate percentage)\b/
+const SCHOOL_HINT = /\b(school|institute|institution|college)\b/
 
 function classHints(label: string): { class10: boolean; class12: boolean } {
   return { class10: CLASS_10_WORDS.test(label), class12: CLASS_12_WORDS.test(label) }
@@ -268,6 +336,8 @@ const CLASS_FAMILY: Record<string, [AgentFillableField, AgentFillableField]> = {
   roll: ['class10RollNumber', 'class12RollNumber'],
   marks: ['class10Marks', 'class12Marks'],
   marksKind: ['class10MarksKind', 'class12MarksKind'],
+  percentage: ['class10Percentage', 'class12Percentage'],
+  school: ['class10SchoolName', 'class12SchoolName'],
 }
 
 /* ---------------------------------------------------------------------------
@@ -280,13 +350,35 @@ const ALIASES_SINGLE: { canonical: AgentFillableField; labels: readonly string[]
   { canonical: 'dateOfBirth', labels: ['date of birth', 'birth date', 'date of brith', 'dob'] },
   { canonical: 'email', labels: ['email', 'email address', 'email id', 'e mail', 'e mail address', 'mail id'] },
   { canonical: 'mobileNumber', labels: ['mobile number', 'mobile', 'mobile no', 'phone number', 'phone', 'contact number', 'contact no', 'telephone number', 'telephone'] },
+  { canonical: 'nationality', labels: ['nationality', 'country of citizenship', 'citizenship'] },
+  { canonical: 'fatherName', labels: ['father name', 'fathers name', 'father s name', 'name of father', 'father full name'] },
+  { canonical: 'motherName', labels: ['mother name', 'mothers name', 'mother s name', 'name of mother', 'mother full name'] },
+  { canonical: 'guardianName', labels: ['guardian name', 'name of guardian', 'guardian full name'] },
+  { canonical: 'guardianRelation', labels: ['guardian relationship', 'relationship with guardian', 'guardian relation'] },
+  { canonical: 'parentMobile', labels: ['parent mobile', 'parent mobile number', 'parent phone', 'parents mobile', 'guardian mobile', 'guardian phone', 'parent contact number'] },
+  { canonical: 'parentEmail', labels: ['parent email', 'parent email address', 'parents email', 'guardian email', 'guardian email address'] },
+  { canonical: 'parentOccupation', labels: ['parent occupation', 'occupation of parent', 'father occupation', 'mother occupation', 'guardian occupation'] },
   { canonical: 'addressLine', labels: ['address', 'address line 1', 'address line', 'postal address', 'residential address'] },
-  { canonical: 'city', labels: ['city', 'town', 'city town', 'town city', 'current city'] },
+  { canonical: 'city', labels: ['city', 'town', 'city town', 'town city'] },
   { canonical: 'state', labels: ['state', 'select state', 'state name', 'state of residence', 'state union territory', 'state ut'] },
   { canonical: 'homeState', labels: ['home state', 'domicile state', 'state of domicile'] },
   { canonical: 'pinCode', labels: ['pin code', 'pincode', 'pin', 'postal code', 'zip code', 'zip'] },
+  { canonical: 'permanentAddressLine', labels: ['permanent address', 'permanent address line', 'permanent address line 1'] },
+  { canonical: 'permanentCity', labels: ['permanent city', 'permanent town', 'permanent district city'] },
+  { canonical: 'permanentDistrict', labels: ['permanent district', 'district permanent'] },
+  { canonical: 'permanentState', labels: ['permanent state', 'state of permanent address'] },
+  { canonical: 'permanentPinCode', labels: ['permanent pin code', 'permanent pincode', 'permanent postal code'] },
+  { canonical: 'permanentCountry', labels: ['permanent country', 'country of permanent address'] },
+  { canonical: 'currentAddressLine', labels: ['current address', 'current address line', 'present address', 'present address line', 'local address'] },
+  { canonical: 'currentCity', labels: ['current city', 'present city', 'current town'] },
+  { canonical: 'currentDistrict', labels: ['current district', 'present district'] },
+  { canonical: 'currentState', labels: ['current state', 'present state', 'state of current address'] },
+  { canonical: 'currentPinCode', labels: ['current pin code', 'current pincode', 'present pin code', 'correspondence pin code'] },
+  { canonical: 'currentCountry', labels: ['current country', 'present country', 'country of current address'] },
+  { canonical: 'class12Status', labels: ['class 12 status', 'class 12 qualification status', 'qualifying examination status', 'current class 12 status'] },
+  { canonical: 'categoryOtherDetail', labels: ['other category', 'category other', 'other category specify', 'specify category'] },
   { canonical: 'category', labels: ['category', 'reservation category', 'community', 'social category', 'caste category', 'category community'] },
-  { canonical: 'pwdStatus', labels: ['pwd', 'pwd status', 'person with disability', 'persons with disability', 'disability status', 'are you pwd'] },
+  { canonical: 'pwdStatus', labels: ['pwd', 'pwd status', 'person with disability', 'persons with disability', 'disability status', 'are you pwd', 'pwbd', 'pwbd status'] },
   { canonical: 'preferredExamCities', labels: ['preferred exam cities', 'preferred examination cities', 'preferred cities', 'exam cities', 'preferred exam centres', 'preferred examination centres'] },
   { canonical: 'dateOfBirthDay', labels: ['day', 'dob day', 'birth day', 'day of birth', 'date of birth day'] },
   { canonical: 'dateOfBirthMonth', labels: ['month', 'dob month', 'birth month', 'month of birth', 'date of birth month'] },
@@ -296,12 +388,18 @@ const ALIASES_SINGLE: { canonical: AgentFillableField; labels: readonly string[]
 /** Address variants that are semantically one of several possible addresses —
  * mapped to our single addressLine but always surfaced for review. */
 const ADDRESS_REVIEW_LABELS = new Set([
-  'correspondence address',
-  'permanent address',
-  'communication address',
   'address line 2',
-  'present address',
-  'local address',
+  'residential address line 2',
+])
+
+/**
+ * Address labels that are not one specific saved address. They map to the
+ * permanently-stored correspondence/current address but always require review,
+ * because "communication address" may mean the permanent address in some forms.
+ */
+const GENERIC_ADDRESS_REVIEW_LABELS = new Set([
+  'communication address',
+  'correspondence address line 1',
 ])
 
 /* ---------------------------------------------------------------------------
@@ -387,6 +485,16 @@ export function matchFieldDeterministically(input: AgentFieldDescriptorInput): A
     return unmapped('Consent/action checkboxes are left to the student')
   }
 
+  // Address variants are resolved BEFORE the alias table: "address line 2"
+  // cannot be reconstructed from a single stored line, and "communication /
+  // correspondence address" may mean either stored address on different forms.
+  if (ADDRESS_REVIEW_LABELS.has(exact)) {
+    return manual('Address line 2 cannot be mapped safely — fill it by hand so the address is not duplicated')
+  }
+  if (GENERIC_ADDRESS_REVIEW_LABELS.has(exact)) {
+    return mapped('currentAddressLine', 'Address variant matched your saved current address — confirm this is the address the form wants', true)
+  }
+
   // ----- tier 1a: exact alias match (order matters, specific before generic)
   for (const { canonical, labels } of ALIASES_SINGLE) {
     if (labels.includes(exact) || (labels.length > 1 && labels.includes(loose))) {
@@ -394,12 +502,8 @@ export function matchFieldDeterministically(input: AgentFieldDescriptorInput): A
         const birthHint = /\b(birth|dob|born)\b/.test(loose)
         return mapped(canonical, birthHint ? 'Matched date-of-birth part' : 'Matched day/month/year wording (review suggested)', !birthHint)
       }
-      if (ADDRESS_REVIEW_LABELS.has(exact)) continue
       return mapped(canonical, 'Label matched a known alias')
     }
-  }
-  if (ADDRESS_REVIEW_LABELS.has(exact)) {
-    return mapped('addressLine', 'Address variant matched — confirm it is the address you want applied (single saved address)', true)
   }
 
   // A plain date input labelled with birth wording is unambiguous — ISO value
@@ -411,16 +515,31 @@ export function matchFieldDeterministically(input: AgentFieldDescriptorInput): A
   // ----- tier 1b: class-scoped compound fields
   const hasBoard = BOARD_HINT.test(loose)
   const hasYear = PASSING_YEAR_HINT.test(loose)
+  const hasExamYear = EXAM_YEAR_HINT.test(loose)
   const hasRoll = ROLL_HINT.test(loose)
   const hasMarks = MARKS_HINT.test(loose)
   const hasMarksKind = MARKS_KIND_HINT.test(loose)
+  const hasPercentage = PERCENTAGE_HINT.test(loose)
+  const hasSchool = SCHOOL_HINT.test(loose)
+
+  // "Year of appearing" is NOT a passing year. A currently-appearing or
+  // result-awaited student has an exam year but no passing year, so mapping
+  // these to the same canonical field would fabricate progress.
+  if (hasExamYear) {
+    if (hints.class10 && !hints.class12) {
+      return manual('Class 10 has no examination-year field in the vault; this is filled by hand')
+    }
+    return mapped('class12ExamYear', 'Label asks for the examination year (not the passing year)', !hints.class12)
+  }
 
   const familyHits: string[] = []
   if (hasBoard) familyHits.push('board')
-  if (hasYear) familyHits.push('year')
+  if (hasSchool) familyHits.push('school')
   if (hasRoll) familyHits.push('roll')
+  if (hasYear) familyHits.push('year')
+  if (hasPercentage && !hasMarksKind && !/\bmarks\b/.test(loose)) familyHits.push('percentage')
   if (hasMarks && hasMarksKind) familyHits.push('marksKind')
-  else if (hasMarks) familyHits.push('marks')
+  else if (hasMarks && !hasPercentage) familyHits.push('marks')
 
   if (familyHits.length > 0) {
     const family = familyHits[0]

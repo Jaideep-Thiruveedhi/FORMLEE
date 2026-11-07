@@ -1,30 +1,40 @@
 {
-  "name": "rankora",
+  "name": "formly",
   "version": "0.1.0",
   "private": true,
+  "description": "Your exam applications, made easier.",
+  "engines": {
+    "node": ">=20.9.0"
+  },
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
+    "build": "next build --webpack",
+    "start": "node scripts/validate-production-env.mjs && next start",
+    "typecheck": "tsc --noEmit",
+    "test:focused": "node --test scripts/tests/agent-auth-scope.test.mjs scripts/tests/extension-side-panel.test.mjs scripts/tests/extension-production-config.test.mjs scripts/tests/agent-core-global.test.mjs scripts/tests/agent-tool-registry.test.mjs scripts/tests/agent-task-orchestrator.test.mjs scripts/tests/agent-integration.test.mjs scripts/tests/credit-wallet-integrity.test.mjs scripts/tests/production-config.test.mjs scripts/tests/document-storage.test.mjs scripts/tests/openrouter-provider.test.mjs scripts/tests/marketing-site.test.mjs",
+    "extension:dev": "node scripts/build-extension.mjs development",
+    "extension:production": "node scripts/build-extension.mjs production",
+    "test:extension": "node --test scripts/tests/extension-side-panel.test.mjs scripts/tests/extension-production-config.test.mjs scripts/tests/agent-core-global.test.mjs",
     "lint": "eslint",
     "postinstall": "prisma skills sync || exit 0",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
-    "db:studio": "prisma studio",
-    "etl:import": "ts-node scripts/etl/import-csv.ts",
-    "etl:seed": "ts-node scripts/etl/seed.ts"
+    "db:studio": "prisma studio"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1161.0",
+    "@aws-sdk/s3-request-presigner": "^3.1161.0",
     "@prisma/client": "^5.22.0",
     "@tanstack/react-query": "^5.104.0",
     "better-auth": "1.7.14",
-    "next": "16.3.6",
+    "next": "16.4.5",
     "pdf-parse": "^2.4.5",
     "prisma": "^5.22.0",
+    "razorpay": "^2.9.8",
     "react": "19.2.8",
     "react-dom": "19.2.8",
-    "zod": "^4.6.5",
+    "zod": "4.6.6",
     "zustand": "^5.0.15"
   },
   "devDependencies": {
@@ -32,11 +42,10 @@
     "@types/node": "^20.19.43",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "csv-parse": "^7.0.3",
     "eslint": "^9",
-    "eslint-config-next": "16.3.6",
+    "eslint-config-next": "16.4.5",
+    "playwright": "^1.65.0",
     "tailwindcss": "^4",
-    "ts-node": "^10.9.2",
     "typescript": "^5"
   }
 }

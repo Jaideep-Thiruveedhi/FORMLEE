@@ -22,7 +22,10 @@ const DEFAULT_MODEL = 'qwen3.8-8k:latest'
 const REQUEST_TIMEOUT_MS = 8000
 
 export function ollamaBaseUrl(): string {
-  return (process.env.OLLAMA_BASE_URL ?? DEFAULT_BASE_URL).replace(/\/+$/, '')
+  const configured = process.env.OLLAMA_BASE_URL
+  // Never fall back to a developer's loopback Ollama service in production.
+  if (process.env.NODE_ENV === 'production' && !configured) return ''
+  return (configured ?? DEFAULT_BASE_URL).replace(/\/+$/, '')
 }
 
 export function ollamaModel(): string {

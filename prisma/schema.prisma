@@ -4,196 +4,143 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_DATABASE_URL")
 }
 
-enum ExamType {
-  JEE_MAIN
-  JEE_ADVANCED
-}
-
-enum Category {
-  GENERAL
-  EWS
-  OBC_NCL
-  SC
-  ST
-}
-
-enum QuotaType {
-  AIQ
-  HS
-  OS
-}
-
-enum Gender {
-  MALE
-  FEMALE
-  TRANSGENDER
-}
-
-enum SeatType {
-  OPEN
-  OPEN_PWD
-  GENDER_NEUTRAL
-  FEMALE_ONLY
-}
-
-enum RoundNumber {
-  ROUND_1
-  ROUND_2
-  ROUND_3
-  ROUND_4
-  ROUND_5
-  ROUND_6
-}
-
-model Institute {
-  id          String   @id @default(cuid())
-  code        String   @unique
-  name        String
-  shortName   String?
-  type        String
-  state       String
-  city        String
-  latitude    Float?
-  longitude   Float?
-  website     String?
-  established Int?
-  nirfRank    Int?
-  branches    Branch[]
-  cutoffs     Cutoff[]
-
-  @@index([state, type])
-  @@index([name])
-}
-
-model Branch {
-  id          String    @id @default(cuid())
-  code        String
-  name        String
-  instituteId String
-  institute   Institute @relation(fields: [instituteId], references: [id], onDelete: Cascade)
-  cutoffs     Cutoff[]
-
-  @@unique([instituteId, code])
-  @@index([code])
-}
-
-model AcademicYear {
-  id       String                  @id @default(cuid())
-  year     Int                     @unique
-  cutoffs  Cutoff[]
-  rounds   CounsellingRound[]
-  mappings PercentileRankMapping[]
-}
-
-model CounsellingRound {
-  id      String       @id @default(cuid())
-  yearId  String
-  year    AcademicYear @relation(fields: [yearId], references: [id], onDelete: Cascade)
-  roundNo RoundNumber
-  cutoffs Cutoff[]
-
-  @@unique([yearId, roundNo])
-}
-
-model CategoryQuota {
-  id       String    @id @default(cuid())
-  category Category
-  quota    QuotaType
-  gender   Gender
-  seatType SeatType
-  cutoffs  Cutoff[]
-
-  @@unique([category, quota, gender, seatType])
-}
-
-model Cutoff {
-  id                String           @id @default(cuid())
-  instituteId       String
-  institute         Institute        @relation(fields: [instituteId], references: [id], onDelete: Cascade)
-  branchId          String
-  branch            Branch           @relation(fields: [branchId], references: [id], onDelete: Cascade)
-  yearId            String
-  year              AcademicYear     @relation(fields: [yearId], references: [id], onDelete: Cascade)
-  roundId           String
-  round             CounsellingRound @relation(fields: [roundId], references: [id], onDelete: Cascade)
-  categoryQuotaId   String
-  categoryQuota     CategoryQuota    @relation(fields: [categoryQuotaId], references: [id], onDelete: Cascade)
-  openingRank       Int?
-  closingRank       Int?
-  openingPercentile Float?
-  closingPercentile Float?
-  source            String
-  sourceUrl         String?
-  importedAt        DateTime         @default(now())
-
-  @@unique([instituteId, branchId, yearId, roundId, categoryQuotaId])
-  @@index([openingRank, closingRank])
-}
-
-model PercentileRankMapping {
-  id         String       @id @default(cuid())
-  yearId     String
-  year       AcademicYear @relation(fields: [yearId], references: [id], onDelete: Cascade)
-  percentile Float
-  rank       Int
-
-  @@unique([yearId, percentile])
-  @@index([percentile])
-}
-
-model DataImport {
-  id          String   @id @default(cuid())
-  year        Int
-  round       Int
-  source      String
-  fileName    String
-  recordCount Int
-  status      String
-  errors      Json?
-  createdAt   DateTime @default(now())
-
-  @@unique([year, round, source])
-}
-
-// Apply AI (Milestone 2) — student profile for an anonymous workspace.
+// Formly — student profile for a browser or account-owned workspace.
 // All document/profile values are user-entered and UNVERIFIED. No examination
 // rules are inferred from them. Scalars are nullable so partially-completed
 // drafts can be saved at any time.
 
+// Canonical Student Information Vault. ONE row per workspace: every supported
+// examination reuses this record instead of creating an exam-specific profile.
+// The legacy addressLine/city/state/pinCode columns remain for backward
+// compatibility and are treated as the permanent address when the newer
+// permanent* columns are empty. All values are student-entered (unverified).
+
 model StudentProfile {
   id                  String   @id @default(cuid())
   workspaceId         String   @unique
+
+  // Personal
   fullName            String?
   gender              String?
   dateOfBirth         String?
   email               String?
   mobileNumber        String?
+  nationality         String?
+  nationalityOther    String?
+
+  // Family / guardian
+  fatherName          String?
+  motherName          String?
+  guardianName        String?
+  guardianRelation    String?
+  parentMobile        String?
+  parentEmail         String?
+  parentOccupation    String?
+
+  // Permanent address (legacy columns above remain the fallback)
+  permanentAddressLine String?
+  permanentCity        String?
+  permanentDistrict    String?
+  permanentState       String?
+  permanentPinCode     String?
+  permanentCountry     String?
+
+  // Current address
+  currentSameAsPermanent Boolean @default(false)
+  currentAddressLine   String?
+  currentCity          String?
+  currentDistrict      String?
+  currentState         String?
+  currentPinCode       String?
+  currentCountry       String?
+
+  // Legacy address fields, still written by older clients
   addressLine         String?
   city                String?
   state               String?
   pinCode             String?
+
+  // Class 10
   class10Board        String?
+  class10SchoolName   String?
   class10PassingYear  Int?
   class10RollNumber   String?
   class10MarksKind    String?
   class10Marks        String?
+  class10Percentage   String?
   class10Subjects     Json?
+
+  // Class 12. class12Status is one of APPEARING / RESULT_AWAITED / PASSED.
+  // Passing year, marks and result dates stay NULL until they legitimately
+  // exist; pending results never make the vault incomplete.
+  class12Status       String?
   class12Board        String?
+  class12SchoolName   String?
+  class12ExamYear     Int?
   class12PassingYear  Int?
   class12RollNumber   String?
   class12MarksKind    String?
   class12Marks        String?
+  class12Percentage   String?
   class12Subjects     Json?
+  class12ResultDeclaredAt DateTime?
+  class12ResultUpdatedAt  DateTime?
+
+  // Category & certificates. category is NEVER inferred; the student must
+  // explicitly select and confirm it. PwD is deliberately separate.
   category            String?
+  categoryOtherDetail String?
+  categoryConfirmed   Boolean  @default(false)
+  categoryConfirmedAt DateTime?
   pwdStatus           Boolean  @default(false)
+  pwdStatusConfirmed  Boolean  @default(false)
+  pwdCertificateDocumentId String?
+
+  categoryCertificateType    String?
+  categoryCertificateDocumentId String?
+  categoryCertificateNumber  String?
+  categoryCertificateAuthority String?
+  categoryCertificateJurisdiction String?
+  categoryCertificateIssueDate String?
+  categoryCertificateValidUntil String?
+  categoryCertificateFinancialYear String?
+  categoryCertificateVerificationStatus String? @default("SELF_REPORTED")
+  categoryCertificateLastConfirmedAt DateTime?
+
+  // Reuse/preferences
   homeState           String?
   preferredExamCities Json?
+
+  // Monotonic vault version, used by application snapshots.
+  profileVersion      Int      @default(1)
+  lastMajorUpdateAt   DateTime?
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
+
+  @@index([workspaceId, updatedAt])
+}
+
+// Append-only history of the canonical vault. `snapshot` is the full profile
+// DTO at that version; `changedFields` lists the top-level fields that moved.
+// Class 12 result updates store reason CLASS12_RESULT_UPDATE so the previous
+// pending state is never lost.
+model StudentProfileVersion {
+  id           String   @id @default(cuid())
+  workspaceId  String
+  profileId    String
+  version      Int
+  reason       String   @default("PROFILE_UPDATE")
+  changedFields Json?
+  snapshot     Json
+  createdAt    DateTime @default(now())
+
+  @@index([workspaceId, createdAt])
+  @@index([profileId, version])
 }
 
 // Uploaded document metadata. Binary content is stored on a private,
@@ -215,20 +162,42 @@ model UploadedDocument {
   replacedAt   DateTime?
   deletedAt    DateTime?
 
+  // Replacement/version chain. The previous file is retained (not deleted)
+  // when a new version is uploaded; only its row stops being `isCurrent`.
+  isCurrent    Boolean   @default(true)
+  supersededAt DateTime?
+  supersedesId String?
+
+  // Optional certificate metadata (mirrored on the linked profile section).
+  // These are student-entered facts, never a claim of legal validity.
+  certificateNumber String?
+  issuingAuthority  String?
+  issuingState      String?
+  issueDate         String?
+  validUntil        String?
+  financialYear     String?
+  verificationStatus String @default("SELF_REPORTED")
+  lastConfirmedAt   DateTime?
+
   @@index([workspaceId, documentType])
+  @@index([workspaceId, documentType, isCurrent])
 }
 
 model User {
-  id            String    @id
+  id            String          @id
   name          String
   email         String
-  emailVerified Boolean   @default(false)
+  emailVerified Boolean         @default(false)
   image         String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  role          String          @default("USER") // USER, ADMIN
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
   sessions      Session[]
   accounts      Account[]
   workspaces    Workspace[]
+  creditAccount CreditAccount?
+  referralPartner ReferralPartner?
+  referralAttribution ReferralAttribution?
 
   @@unique([email])
   @@map("user")
@@ -302,7 +271,7 @@ model Workspace {
 }
 
 // Apply Agent (V1) — single-use pairing ticket between a browser extension and
-// the workspace the student is signed in to on rankora.org/apply/agent. The
+// the workspace the student is signed in to on /apply/agent. The
 // workspaceId stays a plain string (same rule as the other apply tables): the
 // row is created server-side FROM the resolved workspace cookie, so the
 // httpOnly cookie itself is never exposed to extension JavaScript.
@@ -316,6 +285,55 @@ model AgentPairingTicket {
 
   @@index([workspaceId])
   @@map("agent_pairing_ticket")
+}
+
+// Application Hub — one tracked application per workspace + exam session/year.
+// The unique constraint is the database-level duplicate guard; every API read
+// and write also filters by workspaceId. Deadline fields snapshot the verified
+// catalog entry at creation/refresh time so a stale date is never presented as
+// current. Submission timestamps are explicit student records: portalReferenceAt
+// means the student recorded a portal acknowledgement, NOT that Formly verified
+// the submission with the examination body.
+model ExamApplication {
+  id                         String    @id @default(cuid())
+  workspaceId                String
+  examId                     String
+  sessionId                  String
+  examSession                String
+  applicationYear            Int
+  status                     String    @default("NOT_STARTED")
+  preferences                Json?
+  checklist                  Json?
+  notes                      String?
+  deadlineDate               String?
+  deadlineState              String    @default("NOT_ANNOUNCED")
+  deadlineLabel              String?
+  deadlineSourceLabel        String?
+  deadlineSourceUrl          String?
+  deadlineVerifiedAt         DateTime?
+  deadlineNeedsUpdate        Boolean   @default(true)
+  studentSubmittedAt         DateTime?
+  portalReferenceRecordedAt  DateTime?
+  portalReference            String?
+
+  // Canonical-vault snapshot used when this application was prepared. When the
+  // live vault differs, mappingReviewRequired is set and the student must
+  // approve a refreshed mapping; approved values are never silently rewritten.
+  profileSnapshot            Json?
+  profileSnapshotAt          DateTime?
+  profileVersion             Int?
+  mappingReviewRequired      Boolean   @default(false)
+  mappingChangedFields       Json?
+  mappingReviewedAt          DateTime?
+
+  createdAt                  DateTime  @default(now())
+  updatedAt                  DateTime  @updatedAt
+
+  @@unique([workspaceId, examId, sessionId, applicationYear])
+  @@index([workspaceId, status])
+  @@index([workspaceId, deadlineDate])
+  @@index([workspaceId, mappingReviewRequired])
+  @@map("exam_application")
 }
 
 // Short-lived, revocable session granted to the extension after pairing. The
@@ -333,4 +351,415 @@ model AgentSession {
 
   @@index([workspaceId])
   @@map("agent_session")
+}
+
+// Phase 5 — durable server-side approval for browser fills.
+// Created only after an explicit student action in the Side Panel; the model
+// cannot manufacture or alter these rows. A fill is authorized only when the
+// page fingerprint, adapter, proposed mapping and approved field identifiers
+// still match. Sensitive values are stored as hashes/fingerprints, never raw.
+model AgentToolApproval {
+  id                String    @id @default(cuid())
+  workspaceId       String
+  userId            String
+  agentSessionId    String
+  adapterId         String
+  pageUrl           String
+  pageFingerprint   String
+  origin            String
+  tabRef            String?
+  proposedMapping   Json
+  approvedFieldIds  String[]
+  valueFingerprint  Json
+  // APPROVED | FILL_REQUESTED | FILL_VERIFIED | CREDIT_CONSUMED | RELEASED | REJECTED | REVOKED | EXPIRED
+  status            String    @default("APPROVED")
+  verificationReceipt Json?
+  expiresAt         DateTime
+  usedAt            DateTime?
+  revokedAt         DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([workspaceId, status])
+  @@index([agentSessionId, status])
+  @@index([expiresAt])
+  @@map("agent_tool_approval")
+}
+
+// Phase 5 — minimal execution audit for agent tool calls.
+// Never stores passwords, OTPs, tokens, keys, document contents or raw values.
+model AgentToolAudit {
+  id                 String    @id @default(cuid())
+  toolName           String
+  workspaceId        String
+  userId             String
+  agentSessionId     String?
+  status             String
+  durationMs         Int?
+  permissionDecision Json?
+  errorCategory      String?
+  resourceRefs       Json?
+  createdAt          DateTime  @default(now())
+
+  @@index([workspaceId, createdAt])
+  @@index([toolName, createdAt])
+  @@map("agent_tool_audit")
+}
+
+// Phase 6 — durable multi-step task orchestration.
+// A task outlives the short-lived AgentSession and stores a validated plan,
+// ordered steps, execution events and a task-scoped working memory. No raw
+// student values, documents or authentication tokens are stored here.
+model AgentTask {
+  id                String   @id @default(cuid())
+  ref               String   @unique
+  userId            String
+  workspaceId       String
+  agentSessionId    String?
+  objective         String
+  status            String   @default("CREATED")
+  plan              Json?
+  currentStepIndex  Int      @default(-1)
+  context           Json?
+  pendingAction     Json?
+  pendingActionId   String?
+  retryCount        Int      @default(0)
+  errorCode         String?
+  errorMessage      String?
+  expiresAt         DateTime
+  startedAt         DateTime?
+  completedAt       DateTime?
+  cancelledAt       DateTime?
+  pausedAt          DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  steps             AgentTaskStep[]
+  events            AgentTaskEvent[]
+
+  @@index([workspaceId, status, createdAt])
+  @@index([userId, status, createdAt])
+  @@index([ref])
+  @@map("agent_task")
+}
+
+model AgentTaskStep {
+  id                      String   @id @default(cuid())
+  taskId                  String
+  task                    AgentTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  stepIndex               Int
+  toolName                String
+  description             String
+  args                    Json?
+  dependsOn               Int?
+  requiresStudentApproval Boolean  @default(false)
+  status                  String   @default("PENDING")
+  result                  Json?
+  errorCode               String?
+  errorMessage            String?
+  retryCount              Int      @default(0)
+  idempotencyKey          String   @unique
+  executedAt              DateTime?
+  completedAt             DateTime?
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  @@unique([taskId, stepIndex])
+  @@index([taskId, status])
+  @@map("agent_task_step")
+}
+
+model AgentTaskEvent {
+  id        String   @id @default(cuid())
+  taskId    String
+  task      AgentTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  eventType String
+  stepIndex Int?
+  payload   Json?
+  createdAt DateTime @default(now())
+
+  @@index([taskId, createdAt])
+  @@map("agent_task_event")
+}
+
+// =============================================================================
+// Billing & Application Credits
+// =============================================================================
+// One credit account per user. Credits are earned through payments (Phase 2)
+// and spent per examination application assisted by the browser agent. Every
+// balance-changing operation is recorded as an immutable ledger entry.
+
+model CreditAccount {
+  id            String    @id @default(cuid())
+  userId        String    @unique
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  balance       Int       @default(0) // available application credits
+  totalEarned   Int       @default(0)
+  totalSpent    Int       @default(0)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  ledgerEntries CreditLedgerEntry[]
+  reservations  CreditReservation[]
+  paymentOrders PaymentOrder[]
+
+  @@index([userId])
+  @@map("credit_account")
+}
+
+model CreditLedgerEntry {
+  id             String    @id @default(cuid())
+  accountId      String
+  account        CreditAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  // GRANT, RESERVE, CONSUME, RELEASE, REVERSE
+  type           String
+  amount         Int       // signed change in available credits
+  balanceAfter   Int
+
+  reservationId  String?
+  reservation    CreditReservation? @relation(fields: [reservationId], references: [id], onDelete: SetNull)
+  paymentOrderId String?
+  paymentOrder   PaymentOrder?      @relation(fields: [paymentOrderId], references: [id], onDelete: SetNull)
+  applicationId  String?            // soft link to ExamApplication (plain string to avoid circular FK)
+
+  idempotencyKey String?   @unique
+  description    String?
+  metadata       Json?
+  createdAt      DateTime  @default(now())
+
+  @@index([accountId, createdAt])
+  @@index([type])
+  @@map("credit_ledger_entry")
+}
+
+model CreditReservation {
+  id              String    @id @default(cuid())
+  accountId       String
+  account         CreditAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  workspaceId     String
+  applicationId   String?   // set when the reservation targets a known application
+
+  // PENDING, CONSUMED, RELEASED
+  status          String    @default("PENDING")
+  amount          Int       // always 1 for a single application credit
+
+  // Historical values are ambiguous: prior code stored approval keys here,
+  // while earlier data may contain actual agent session ids. Preserve opaque.
+  legacyAgentSessionOrIdempotencyKey String? @unique
+  agentSessionId  String?
+  idempotencyKey  String?   @unique
+
+  createdAt       DateTime  @default(now())
+  expiresAt       DateTime?
+  consumedAt      DateTime?
+  releasedAt      DateTime?
+
+  ledgerEntries   CreditLedgerEntry[]
+
+  @@index([accountId, status])
+  @@index([workspaceId, status])
+  @@index([agentSessionId])
+  @@index([applicationId])
+  @@map("credit_reservation")
+}
+
+model PaymentOrder {
+  id              String    @id @default(cuid())
+  accountId       String
+  account         CreditAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  provider        String    // e.g. razorpay
+  providerOrderId String?   @unique
+  providerPaymentId String? // Razorpay payment id after capture
+  packageId       String
+
+  credits         Int       // credits to grant on payment success
+  amountPaise     Int       // price in integer paise (never float rupees)
+  currency        String    @default("INR")
+  paidAmountPaise Int?      // authoritative amount returned by Razorpay
+
+  // CREATED, PAID, FAILED, REFUNDED
+  status          String    @default("CREATED")
+
+  idempotencyKey  String    @unique
+  receipt         String?   // Razorpay receipt string
+  metadata        Json?
+  paidAt          DateTime?
+  verifiedAt      DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  ledgerEntries   CreditLedgerEntry[]
+  referralCommission ReferralCommission?
+
+  @@index([accountId, status])
+  @@index([providerOrderId])
+  @@map("payment_order")
+}
+
+model RazorpayWebhookEvent {
+  id          String   @id @default(cuid())
+  eventId     String   @unique // Razorpay event id (idempotency key)
+  event       String
+  rawBody     String   // stored for audit/replay
+  payload     Json
+  signature   String?  // captured HMAC signature
+  processed   Boolean  @default(false)
+  processedAt DateTime?
+  createdAt   DateTime @default(now())
+
+  @@index([eventId])
+  @@index([processed, createdAt])
+  @@map("razorpay_webhook_event")
+}
+
+// Server-controlled packages. Prices are stored in integer paise.
+model CreditPackage {
+  id          String   @id @default(cuid())
+  code        String   @unique // STARTER, VALUE, PRO
+  name        String
+  credits     Int
+  amountPaise Int
+  currency    String   @default("INR")
+  isActive    Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([isActive, sortOrder])
+  @@map("credit_package")
+}
+
+// =============================================================================
+// Referral & Affiliate Marketing
+// =============================================================================
+
+model ReferralPartner {
+  id                  String              @id @default(cuid())
+  userId              String?             @unique // linked Formly user, if any
+  user                User?               @relation(fields: [userId], references: [id], onDelete: SetNull)
+  name                String
+  email               String              @unique
+  phone               String?
+  tier                String              @default("STUDENT_AMBASSADOR") // STUDENT_AMBASSADOR, CAMPUS_REPRESENTATIVE, MARKETING_PARTNER
+  commissionBasisPoints Int               @default(500) // 5% default; stored as basis points (100 = 1%)
+  holdingDays         Int                 @default(7)
+  isActive            Boolean             @default(true)
+  notes               String?
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+
+  codes               ReferralCode[]
+  attributions        ReferralAttribution[]
+  commissions         ReferralCommission[]
+  payouts             ReferralPayout[]
+
+  @@index([isActive, tier])
+  @@map("referral_partner")
+}
+
+model ReferralCode {
+  id          String   @id @default(cuid())
+  partnerId   String
+  partner     ReferralPartner @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  code        String   @unique // e.g. JAIDEEP10
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  clicks      ReferralClick[]
+  attributions ReferralAttribution[]
+
+  @@index([partnerId, isActive])
+  @@map("referral_code")
+}
+
+model ReferralClick {
+  id          String   @id @default(cuid())
+  codeId      String
+  code        ReferralCode @relation(fields: [codeId], references: [id], onDelete: Cascade)
+  ipHash      String?  // SHA-256 hash of IP for abuse detection
+  userAgent   String?
+  source      String?  // utm_source or other source
+  landingPath String?  // path where the link was opened
+  clickedAt   DateTime @default(now())
+
+  @@index([codeId, clickedAt])
+  @@map("referral_click")
+}
+
+model ReferralAttribution {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  partnerId   String
+  partner     ReferralPartner @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  codeId      String
+  code        ReferralCode @relation(fields: [codeId], references: [id], onDelete: Cascade)
+  attributedAt DateTime @default(now())
+  expiresAt   DateTime // 30-day window from click
+  convertedAt DateTime?
+
+  @@index([partnerId, attributedAt])
+  @@index([userId])
+  @@map("referral_attribution")
+}
+
+model ReferralCommission {
+  id                String   @id @default(cuid())
+  partnerId         String
+  partner           ReferralPartner @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  paymentOrderId    String   @unique
+  paymentOrder      PaymentOrder @relation(fields: [paymentOrderId], references: [id], onDelete: Cascade)
+
+  amountPaise       Int      // commission amount in paise (integer)
+  basisPoints       Int      // commission rate used (basis points)
+  // PENDING, APPROVED, REJECTED, REVERSED
+  status            String   @default("PENDING")
+  holdingUntil      DateTime // eligible for payout after this date
+  approvedAt        DateTime?
+  paidAt            DateTime?
+  payoutId          String?
+  payout            ReferralPayout? @relation(fields: [payoutId], references: [id], onDelete: SetNull)
+
+  idempotencyKey    String   @unique
+  createdAt         DateTime @default(now())
+
+  reversal          ReferralCommissionReversal?
+
+  @@index([partnerId, status])
+  @@index([status, holdingUntil])
+  @@map("referral_commission")
+}
+
+model ReferralCommissionReversal {
+  id                String   @id @default(cuid())
+  commissionId      String   @unique
+  commission        ReferralCommission @relation(fields: [commissionId], references: [id], onDelete: Cascade)
+  partnerId         String
+  amountPaise       Int      // negative of the original commission
+  reason            String   // refund, chargeback
+  createdAt         DateTime @default(now())
+
+  @@index([partnerId, createdAt])
+  @@map("referral_commission_reversal")
+}
+
+model ReferralPayout {
+  id          String   @id @default(cuid())
+  partnerId   String
+  partner     ReferralPartner @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  amountPaise Int
+  // PENDING, PAID
+  status      String   @default("PENDING")
+  method      String?  // bank_transfer, upi, etc.
+  reference   String?  // transaction reference
+  notes       String?
+  paidAt      DateTime?
+  createdAt   DateTime @default(now())
+
+  commissions ReferralCommission[]
+
+  @@index([partnerId, status])
+  @@map("referral_payout")
 }

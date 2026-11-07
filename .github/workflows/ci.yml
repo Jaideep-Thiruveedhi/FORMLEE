@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql://ci:ci@db.example.invalid:5432/formlee_test?sslmode=require
+      DIRECT_DATABASE_URL: postgresql://ci:ci@db.example.invalid:5432/formlee_test?sslmode=require
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run db:generate
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run test:focused
+      - run: npm run build

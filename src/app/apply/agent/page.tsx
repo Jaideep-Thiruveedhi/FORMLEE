@@ -18,6 +18,29 @@ import {
   useProfile,
 } from '@/lib/apply-ai/api-client'
 import type { ApplicationStatus, ExamId } from '@/lib/apply-ai/types'
+import {
+  JEE_MAIN_ADAPTER_VERSION,
+  JEE_MAIN_DOCUMENT_SPECS,
+  JEE_MAIN_FILLS,
+  JEE_MAIN_MANUAL,
+  JEE_MAIN_PORTAL_ORIGIN,
+  JEE_MAIN_PORTAL_PATH_PREFIX,
+  JEE_MAIN_SOURCES,
+  JEE_MAIN_STATUS_LABEL,
+  JEE_MAIN_UPLOAD_RULES,
+  JEE_MAIN_VERIFIED_ON,
+  jeeUploadGuidance,
+} from '@/lib/agent/jee-main'
+import {
+  VITEEE_ADAPTER_VERSION,
+  VITEEE_DOCUMENT_SPECS,
+  VITEEE_FILLABLE_CANONICALS,
+  VITEEE_OFFICIAL_ORIGIN,
+  VITEEE_FIXTURE_PATH,
+  VITEEE_SOURCES,
+  VITEEE_STATUS_LABEL,
+  VITEEE_VERIFIED_ON,
+} from '@/lib/agent/viteee'
 import { ApplyHeader } from '@/components/apply/apply-header'
 import { SaveWorkBanner } from '@/components/apply/save-work-banner'
 import { PreparationWorkflow } from '@/components/apply/preparation-workflow'
@@ -40,7 +63,7 @@ const AGENT_CAPABILITIES = [
 ]
 
 /**
- * Rankora Apply Agent (V1) — control center.
+ * Formlee Apply Agent (V1) — control center.
  *
  * Readiness/preparation reuse the existing profile, document and
  * examination-requirements logic; the page adds pairing, connection state and
@@ -75,6 +98,18 @@ export default function ApplyAgentPage() {
     }
     return map
   }, [profile, documents, applications])
+
+  const jeeDocumentChecks = useMemo(
+    () =>
+      JEE_MAIN_UPLOAD_RULES.map(rule => ({
+        ...rule,
+        guidance: jeeUploadGuidance(
+          rule.documentType,
+          documents.find(document => document.documentType === rule.documentType) ?? null
+        ),
+      })),
+    [documents]
+  )
 
   const loading =
     !hydrated ||
@@ -184,6 +219,256 @@ export default function ApplyAgentPage() {
                 >
                   Open demo form
                 </Link>
+              </div>
+            </section>
+
+            {/* JEE Main 2027 adapter */}
+            <section className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-4'>
+              <div className='bg-background border border-border rounded-2xl p-5 space-y-4'>
+                <div className='flex flex-wrap items-start justify-between gap-3'>
+                  <div>
+                    <div className='flex flex-wrap items-center gap-2'>
+                      <h2 className='text-base font-semibold text-foreground'>JEE Main 2027 (Session 1)</h2>
+                      <span className='inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-900 border border-amber-300'>
+                        Beta
+                      </span>
+                      <span className='inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-muted text-muted-foreground border border-border'>
+                        Live portal not verified
+                      </span>
+                    </div>
+                    <p className='text-xs text-muted-foreground mt-1 max-w-2xl'>
+                      {JEE_MAIN_STATUS_LABEL}. The adapter only recognises the verified official application area
+                      {' '}
+                      <span className='font-mono text-[11px]'>{JEE_MAIN_PORTAL_ORIGIN}{JEE_MAIN_PORTAL_PATH_PREFIX}</span>
+                      {' '}and maps labels documented in the official Information Bulletin. You log in, complete CAPTCHA/OTP,
+                      review every field and submit on the official portal yourself.
+                    </p>
+                  </div>
+                  <div className='flex flex-wrap gap-2'>
+                    <Link
+                      href='/apply/agent/jee-main-2027-demo'
+                      className='px-4 py-2 text-xs font-semibold text-primary-foreground bg-primary rounded-lg hover:bg-primary/90 transition-colors'
+                    >
+                      Open synthetic JEE fixture
+                    </Link>
+                    <a
+                      href='https://jeemain.nta.nic.in/online-application-form-for-jee-main-2027-session-1/'
+                      target='_blank'
+                      rel='noreferrer noopener'
+                      className='px-4 py-2 text-xs font-semibold text-foreground bg-background border border-border rounded-lg hover:bg-muted/40 transition-colors'
+                    >
+                      Official application page
+                    </a>
+                  </div>
+                </div>
+
+                <div className='grid gap-3 md:grid-cols-2'>
+                  <div className='rounded-xl border border-border bg-muted/20 p-3'>
+                    <p className='text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-2'>
+                      Documented fields the adapter can propose
+                    </p>
+                    <ul className='space-y-1 text-[11px] text-muted-foreground'>
+                      {JEE_MAIN_FILLS.map(item => (
+                        <li key={item} className='flex gap-2'>
+                          <span aria-hidden className='text-primary'>•</span>
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div className='rounded-xl border border-red-200 bg-red-50/50 p-3'>
+                    <p className='text-[11px] font-semibold uppercase tracking-wide text-red-700 mb-2'>
+                      Always left for you (never automated)
+                    </p>
+                    <ul className='space-y-1 text-[11px] text-red-800/90'>
+                      {JEE_MAIN_MANUAL.map(item => (
+                        <li key={item} className='flex gap-2'>
+                          <span aria-hidden>•</span>
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+
+                <div className='rounded-xl border border-border p-3'>
+                  <p className='text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-2'>
+                    Official document specifications
+                  </p>
+                  <dl className='grid gap-2 sm:grid-cols-2 text-[11px]'>
+                    {JEE_MAIN_DOCUMENT_SPECS.map(doc => (
+                      <div key={doc.label} className='rounded-lg bg-muted/30 border border-border/70 p-2'>
+                        <dt className='font-semibold text-foreground'>{doc.label}</dt>
+                        <dd className='text-muted-foreground mt-0.5'>{doc.spec}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                  <div className='mt-3 border-t border-border/70 pt-3'>
+                    <p className='text-[11px] font-semibold text-foreground'>
+                      Your private Formlee documents — advisory check
+                    </p>
+                    <ul className='mt-1 space-y-1.5 text-[11px]'>
+                      {jeeDocumentChecks.map(check => (
+                        <li key={check.documentType} className='flex flex-wrap items-baseline gap-x-2 gap-y-0.5'>
+                          <span className='font-medium text-foreground'>{check.label}</span>
+                          <span
+                            className={
+                              check.guidance.status === 'ok'
+                                ? 'text-emerald-700'
+                                : check.guidance.status === 'outside-guidance'
+                                  ? 'text-amber-800'
+                                  : 'text-muted-foreground'
+                            }
+                          >
+                            {check.guidance.status === 'ok'
+                              ? 'appears within published format/size limits'
+                              : check.guidance.status === 'outside-guidance'
+                                ? 'appears outside published format/size limits'
+                                : 'not uploaded'}
+                          </span>
+                          <span className='basis-full text-muted-foreground'>{check.guidance.message}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    <p className='text-[10px] text-muted-foreground mt-2'>
+                      Advisory only — Formlee does not verify documents and never attaches them to the portal. The
+                      official portal&apos;s own validator is final.
+                    </p>
+                  </div>
+                  <p className='text-[11px] text-muted-foreground mt-2'>
+                    Formlee never attaches documents to a portal or sends them to AI. Select and upload each file yourself on the
+                    official page after checking these limits.
+                  </p>
+                </div>
+
+                <div className='border-t border-border pt-3'>
+                  <p className='text-[11px] font-semibold text-foreground'>Official sources verified {JEE_MAIN_VERIFIED_ON}</p>
+                  <ul className='mt-1 space-y-1 text-[11px]'>
+                    {JEE_MAIN_SOURCES.map(source => (
+                      <li key={source.url}>
+                        <a
+                          href={source.url}
+                          target='_blank'
+                          rel='noreferrer noopener'
+                          className='text-primary hover:underline'
+                        >
+                          {source.label}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                  <p className='text-[10px] text-muted-foreground mt-2'>
+                    Adapter {JEE_MAIN_ADAPTER_VERSION}. The synthetic fixture uses documented labels but is not an official page
+                    and never submits anywhere.
+                  </p>
+                </div>
+              </div>
+            </section>
+
+            {/* VITEEE 2027 adapter */}
+            <section className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-4'>
+              <div className='bg-background border border-border rounded-2xl p-5 space-y-4'>
+                <div className='flex flex-wrap items-start justify-between gap-3'>
+                  <div>
+                    <div className='flex flex-wrap items-center gap-2'>
+                      <h2 className='text-base font-semibold text-foreground'>VITEEE 2027</h2>
+                      <span className='inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-900 border border-amber-300'>
+                        Documentation-backed
+                      </span>
+                      <span className='inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-muted text-muted-foreground border border-border'>
+                        Demo only
+                      </span>
+                    </div>
+                    <p className='text-xs text-muted-foreground mt-1 max-w-2xl'>
+                      {VITEEE_STATUS_LABEL}. The adapter recognises the public VITEEE website
+                      {' '}
+                      <span className='font-mono text-[11px]'>{VITEEE_OFFICIAL_ORIGIN}</span>
+                      {' '}and a synthetic local demo. Because the live application portal was not inspected, it is
+                      deliberately limited to common Personal Details / Qualification Details labels.
+                    </p>
+                  </div>
+                  <div className='flex flex-wrap gap-2'>
+                    <Link
+                      href={VITEEE_FIXTURE_PATH}
+                      className='px-4 py-2 text-xs font-semibold text-primary-foreground bg-primary rounded-lg hover:bg-primary/90 transition-colors'
+                    >
+                      Open synthetic VITEEE fixture
+                    </Link>
+                    <a
+                      href='https://viteee.vit.ac.in/'
+                      target='_blank'
+                      rel='noreferrer noopener'
+                      className='px-4 py-2 text-xs font-semibold text-foreground bg-background border border-border rounded-lg hover:bg-muted/40 transition-colors'
+                    >
+                      VITEEE official website
+                    </a>
+                  </div>
+                </div>
+
+                <div className='grid gap-3 md:grid-cols-2'>
+                  <div className='rounded-xl border border-border bg-muted/20 p-3'>
+                    <p className='text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-2'>
+                      Documented fields the adapter can propose
+                    </p>
+                    <ul className='space-y-1 text-[11px] text-muted-foreground'>
+                      {VITEEE_FILLABLE_CANONICALS.map(canonical => (
+                        <li key={canonical} className='flex gap-2'>
+                          <span aria-hidden className='text-primary'>•</span>
+                          <span>{canonical}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div className='rounded-xl border border-red-200 bg-red-50/50 p-3'>
+                    <p className='text-[11px] font-semibold uppercase tracking-wide text-red-700 mb-2'>
+                      Always left for you (never automated)
+                    </p>
+                    <ul className='space-y-1 text-[11px] text-red-800/90'>
+                      <li className='flex gap-2'><span aria-hidden>•</span><span>Login, OTP and CAPTCHA</span></li>
+                      <li className='flex gap-2'><span aria-hidden>•</span><span>Parent/guardian confirmation details</span></li>
+                      <li className='flex gap-2'><span aria-hidden>•</span><span>Address components and PIN code</span></li>
+                      <li className='flex gap-2'><span aria-hidden>•</span><span>Exam preferences, slot booking and city choices</span></li>
+                      <li className='flex gap-2'><span aria-hidden>•</span><span>Photograph, signature and certificate uploads</span></li>
+                      <li className='flex gap-2'><span aria-hidden>•</span><span>Declaration, payment and final submission</span></li>
+                    </ul>
+                  </div>
+                </div>
+
+                <div className='rounded-xl border border-border p-3'>
+                  <p className='text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-2'>
+                    Official document specifications
+                  </p>
+                  <dl className='grid gap-2 sm:grid-cols-2 text-[11px]'>
+                    {VITEEE_DOCUMENT_SPECS.map(doc => (
+                      <div key={doc.label} className='rounded-lg bg-muted/30 border border-border/70 p-2'>
+                        <dt className='font-semibold text-foreground'>{doc.label}</dt>
+                        <dd className='text-muted-foreground mt-0.5'>{doc.spec}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                </div>
+
+                <div className='border-t border-border pt-3'>
+                  <p className='text-[11px] font-semibold text-foreground'>Official sources verified {VITEEE_VERIFIED_ON}</p>
+                  <ul className='mt-1 space-y-1 text-[11px]'>
+                    {VITEEE_SOURCES.map(source => (
+                      <li key={source.url}>
+                        <a
+                          href={source.url}
+                          target='_blank'
+                          rel='noreferrer noopener'
+                          className='text-primary hover:underline'
+                        >
+                          {source.label}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                  <p className='text-[10px] text-muted-foreground mt-2'>
+                    Adapter {VITEEE_ADAPTER_VERSION}. The synthetic fixture uses documented labels but is not an official page
+                    and never submits anywhere.
+                  </p>
+                </div>
               </div>
             </section>
 

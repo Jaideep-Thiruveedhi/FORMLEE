@@ -1,5 +1,5 @@
 /**
- * Rankora Apply Agent V1 — popup controller.
+ * Formlee Apply Agent V1 — popup controller.
  *
  * Plan rendering is DOM-safe: every page-derived string (labels, reasons)
  * goes through textContent — never innerHTML — because labels come from any
@@ -10,6 +10,7 @@ const state = {
   connected: false,
   expiresAt: null,
   plan: null,
+  page: null,
   filledAt: null,
 }
 
@@ -21,44 +22,32 @@ const STATUS_BADGES = {
   unmapped: { text: 'Not mapped', cls: 'st-neutral' },
 }
 
-const RESULT_LINES = {
-  filled: 'filled',
-  'no-option': 'no matching option — left blank',
-  stale: 'page changed since the scan — inspect again',
-  refused: 'refused for safety',
-  skipped: 'left untouched',
-  unsupported: 'unsupported field type — left blank',
-  'no-saved-value': 'no saved value in your profile — left blank',
+// Shared vocabulary: the popup and side panel must describe fields,
+// results and adapter honesty identically.
+const AgentUI = typeof FormleeAgentUI !== 'undefined' ? FormleeAgentUI : null
+
+function pageKindLabel(kind) {
+  return AgentUI ? AgentUI.pageKindLabel(kind) : (kind || 'this page')
 }
 
-const FILLABLE_FIELD_NAMES = {
-  fullName: 'Full name',
-  gender: 'Gender',
-  dateOfBirth: 'Date of birth',
-  dateOfBirthDay: 'Date of birth — day',
-  dateOfBirthMonth: 'Date of birth — month',
-  dateOfBirthYear: 'Date of birth — year',
-  email: 'Email address',
-  mobileNumber: 'Mobile number',
-  addressLine: 'Address',
-  city: 'City',
-  state: 'State',
-  pinCode: 'PIN code',
-  class10Board: 'Class 10 board',
-  class10PassingYear: 'Class 10 passing year',
-  class10RollNumber: 'Class 10 roll number',
-  class10MarksKind: 'Class 10 marks format',
-  class10Marks: 'Class 10 marks',
-  class12Board: 'Class 12 board',
-  class12PassingYear: 'Class 12 passing year',
-  class12RollNumber: 'Class 12 roll number',
-  class12MarksKind: 'Class 12 marks format',
-  class12Marks: 'Class 12 marks',
-  category: 'Category',
-  pwdStatus: 'PwD status',
-  homeState: 'Home state',
-  preferredExamCities: 'Preferred exam cities',
+function clearStatusLabel(adapterStatus) {
+  return AgentUI ? AgentUI.clearStatusLabel(adapterStatus) : null
 }
+
+function adapterBannerClass(adapterStatus) {
+  const tone = AgentUI ? AgentUI.adapterTone(adapterStatus) : ''
+  if (tone === 'error') return 'banner-error'
+  if (tone === 'warn') return 'banner-warn'
+  return ''
+}
+
+function adapterBannerBody(adapterStatus, pageKind) {
+  return AgentUI ? AgentUI.adapterSummary(adapterStatus, pageKind) : ''
+}
+
+const FILLABLE_FIELD_NAMES = AgentUI ? AgentUI.FIELD_NAMES : {}
+
+const RESULT_LINES = AgentUI ? AgentUI.RESULT_LINES : {}
 
 const el = id => document.getElementById(id)
 
@@ -68,6 +57,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (event.key === 'Enter') onPair()
   })
   el('scan-button').addEventListener('click', onScan)
+  el('show-pet-button').addEventListener('click', onShowPet)
   el('fill-button').addEventListener('click', onFill)
   el('cancel-button').addEventListener('click', onCancel)
   el('disconnect-button').addEventListener('click', onDisconnect)
@@ -127,6 +117,7 @@ function showConnected() {
   el('connection-chip').classList.add('chip-on')
   el('status-line').textContent = ''
   el('results').classList.add('hidden')
+  hideAdapterBanner()
   refreshExpiry()
 }
 
@@ -178,10 +169,25 @@ async function onPair() {
   showConnected()
 }
 
+async function onShowPet() {
+  const button = el('show-pet-button')
+  button.disabled = true
+  button.textContent = 'Opening…'
+  const response = await sendRuntime({ type: 'SHOW_PET' })
+  button.disabled = false
+  button.textContent = 'Show floating assistant'
+  if (!response || !response.ok) {
+    el('status-line').textContent = (response && response.error) || 'Could not reach the page assistant.'
+  }
+}
+
 async function onDisconnect() {
   await sendRuntime({ type: 'DISCONNECT' })
   state.connected = false
   state.plan = null
+  state.page = null
+  state.filledAt = null
+  hideAdapterBanner()
   showConnectPanel(null)
 }
 
@@ -194,26 +200,94 @@ async function onScan() {
   scanButton.textContent = 'Inspecting…'
   status.textContent = ''
   el('results').classList.add('hidden')
+  hideAdapterBanner()
 
   const response = await sendRuntime({ type: 'SCAN' })
   scanButton.disabled = false
   scanButton.textContent = 'Inspect this page'
 
   if (!response || !response.ok) {
+    state.plan = null
+    state.page = null
     status.textContent = (response && response.error) || 'Scan failed.'
     return
   }
+
+  state.page = response.page || (response.plan && response.plan.page) || null
+  state.filledAt = null
+  el('cancel-button').textContent = 'Cancel'
   if (!response.plan) {
-    status.textContent = response.note || 'No fillable form fields found on this page.'
+    state.plan = null
+    renderPageNotice(state.page, response.note)
     return
   }
   state.plan = response.plan
   renderPlan()
 }
 
+function hideAdapterBanner() {
+  const banner = el('adapter-banner')
+  banner.textContent = ''
+  banner.className = 'banner hidden'
+}
+
+function renderPageNotice(page, note) {
+  const status = el('status-line')
+  status.textContent = note || 'No fillable form fields found on this page.'
+  if (!page || page.adapter === 'none' || page.adapter === 'generic') {
+    hideAdapterBanner()
+    return
+  }
+  const banner = el('adapter-banner')
+  banner.textContent = ''
+  banner.classList.remove('hidden')
+  banner.className = 'banner ' + adapterBannerClass(page.adapterStatus)
+
+  const title = document.createElement('p')
+  title.className = 'banner-title'
+  const label = page.adapterLabel || page.adapter
+  const statusText = clearStatusLabel(page.adapterStatus)
+  title.textContent = label + (statusText ? ' · ' + statusText : '') + ' — page: ' + pageKindLabel(page.kind)
+  banner.appendChild(title)
+
+  const body = document.createElement('p')
+  body.textContent = note || adapterBannerBody(page.adapterStatus, page.kind)
+  banner.appendChild(body)
+}
+
+function renderAdapterBanner(plan) {
+  const banner = el('adapter-banner')
+  banner.textContent = ''
+  banner.classList.remove('banner-warn')
+  banner.classList.remove('banner-error')
+  if (!plan || plan.adapter === 'none' || plan.adapter === 'generic' || !plan.adapterLabel) {
+    banner.classList.add('hidden')
+    return
+  }
+  banner.classList.remove('hidden')
+  banner.className = 'banner ' + adapterBannerClass(plan.adapterStatus)
+
+  const title = document.createElement('p')
+  title.className = 'banner-title'
+  const statusText = clearStatusLabel(plan.adapterStatus)
+  title.textContent = plan.adapterLabel + (statusText ? ' · ' + statusText : '')
+  banner.appendChild(title)
+
+  const body = document.createElement('p')
+  body.textContent = adapterBannerBody(plan.adapterStatus, plan.page && plan.page.kind)
+  banner.appendChild(body)
+
+  if (plan.adapterNote) {
+    const note = document.createElement('p')
+    note.textContent = plan.adapterNote
+    banner.appendChild(note)
+  }
+}
+
 function renderPlan() {
   const plan = state.plan
   if (!plan) return
+  renderAdapterBanner(plan)
   const items = el('plan-items')
   items.textContent = ''
   items.classList.remove('hidden')
@@ -273,6 +347,13 @@ function buildPlanRow(item) {
   label.appendChild(kindSpan)
   main.appendChild(label)
 
+  if (item.group) {
+    const group = document.createElement('div')
+    group.className = 'item-group'
+    group.textContent = 'group: ' + item.group
+    main.appendChild(group)
+  }
+
   const mapping = document.createElement('div')
   mapping.className = 'item-mapping'
   if (item.status === 'mapped' && item.canonical) {
@@ -326,16 +407,33 @@ async function onFill() {
   if (approved.length === 0) return
   const button = el('fill-button')
   button.disabled = true
-  button.textContent = 'Filling…'
+  button.textContent = 'Approving…'
 
+  const approval = await sendRuntime({
+    type: 'CREATE_APPROVAL',
+    approved: approved.map(item => ({ index: item.index, canonical: item.canonical })),
+  })
+  if (!approval || !approval.ok || typeof approval.approvalRef !== 'string') {
+    button.disabled = false
+    updateFillButton()
+    el('status-line').textContent = (approval && approval.error) || 'Could not create server-side approval.'
+    return
+  }
+
+  button.textContent = 'Filling…'
   const response = await sendRuntime({
     type: 'FILL',
+    approvalRef: approval.approvalRef,
     approved: approved.map(item => ({ index: item.index, canonical: item.canonical })),
   })
 
   const resultsBox = el('results')
   resultsBox.textContent = ''
   if (!response || !response.ok) {
+    if (response && response.code === 'PAGE_CHANGED') {
+      discardPlan(response.error, true)
+      return
+    }
     button.disabled = false
     updateFillButton()
     resultsBox.classList.remove('hidden')
@@ -354,6 +452,14 @@ async function onFill() {
   const head = document.createElement('p')
   head.className = 'r-head'
   head.textContent = 'Filled ' + response.filled + ' of ' + response.results.length + ' selected fields. Nothing was submitted.'
+  if (response.unverified > 0) {
+    const warning = document.createElement('span')
+    warning.className = 'r-fail'
+    warning.textContent =
+      ' ' + response.unverified + ' field' + (response.unverified === 1 ? '' : 's') + ' could not be verified — check ' +
+      (response.unverified === 1 ? 'it' : 'them') + ' yourself.'
+    head.appendChild(warning)
+  }
   resultsBox.appendChild(head)
 
   const labelByIndex = new Map(state.plan ? state.plan.items.map(item => [item.index, item.label]) : [])
@@ -382,26 +488,29 @@ async function onFill() {
 
   const cancel = el('cancel-button')
   cancel.textContent = 'Close results'
-}function onCancel() {
+}
+
+function discardPlan(message, keepResults) {
+  state.plan = null
+  state.filledAt = null
+  el('plan-items').classList.add('hidden')
+  el('plan-summary').classList.add('hidden')
+  el('plan-note').classList.add('hidden')
+  el('approve-actions').classList.add('hidden')
+  if (!keepResults) el('results').classList.add('hidden')
+  el('cancel-button').textContent = 'Cancel'
+  hideAdapterBanner()
+  el('status-line').textContent =
+    message || 'Cancelled — nothing was filled. Inspect again to rebuild a plan.'
+  sendRuntime({ type: 'CLEAR_PLAN' })
+}
+
+function onCancel() {
   if (state.filledAt) {
-    state.plan = null
-    state.filledAt = null
-    el('plan-items').classList.add('hidden')
-    el('plan-summary').classList.add('hidden')
-    el('plan-note').classList.add('hidden')
-    el('results').classList.add('hidden')
-    el('approve-actions').classList.add('hidden')
-    el('cancel-button').textContent = 'Cancel'
-    el('status-line').textContent = 'Plan discarded. Nothing more will be filled until you inspect again.'
+    discardPlan('Plan discarded. Nothing more will be filled until you inspect again.')
     return
   }
   if (state.plan) {
-    state.plan = null
-    el('plan-items').classList.add('hidden')
-    el('plan-summary').classList.add('hidden')
-    el('plan-note').classList.add('hidden')
-    el('approve-actions').classList.add('hidden')
-    el('results').classList.add('hidden')
-    el('status-line').textContent = 'Cancelled — nothing was filled. Inspect again to rebuild a plan.'
+    discardPlan('Cancelled — nothing was filled. Inspect again to rebuild a plan.')
   }
 }

@@ -2,15 +2,15 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <title>Rankora Apply Agent</title>
+    <title>Formlee Apply Agent</title>
     <link rel="stylesheet" href="popup.css" />
   </head>
   <body>
     <header class="header">
       <div class="brand">
-        <span class="brand-mark" aria-hidden="true">R</span>
+        <span class="brand-mark" aria-hidden="true">F</span>
         <div>
-          <h1>Rankora Apply Agent</h1>
+          <h1>Formlee Apply Agent</h1>
           <p class="sub">Review · approve · fill — never submit</p>
         </div>
       </div>
@@ -20,7 +20,7 @@
     <!-- pairing -->
     <section id="connect-panel" class="panel">
       <p class="hint">
-        1. On the Rankora agent page, press <strong>Generate pairing code</strong>.<br />
+        1. On the Formly agent page, press <strong>Generate pairing code</strong>.<br />
         2. Paste the code below (this browser's workspace only, valid 15 minutes).
       </p>
       <div class="row">
@@ -39,9 +39,11 @@
 
       <div class="actions">
         <button id="scan-button" class="btn secondary">Inspect this page</button>
+        <button id="show-pet-button" class="btn ghost">Show floating assistant</button>
       </div>
       <p id="status-line" class="hint"></p>
 
+      <div id="adapter-banner" class="banner hidden"></div>
       <div id="plan-summary" class="summary hidden"></div>
       <div id="plan-note" class="note hidden"></div>
 
@@ -57,9 +59,15 @@
 
     <footer class="footer">
       The agent stops before submission: it never fills passwords, OTPs, CAPTCHAs, payments or uploads, never
-      submits, never pays. Demo builds are not validated against official portals.
+      submits, never pays. The JEE Main 2027 and VITEEE 2027 adapters are
+      <strong>documentation-backed / demonstration only</strong> — the live portal structures have not been verified,
+      so review every field after filling.
     </footer>
 
+    <script src="shared/formlee-config.js"></script>
+    <script src="shared/agent-ui.js"></script>
+    <script src="shared/pet-core.js"></script>
+    <script src="shared/agent-core.js"></script>
     <script src="popup.js"></script>
   </body>
 </html>

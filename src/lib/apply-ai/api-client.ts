@@ -5,11 +5,27 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { authClient } from '@/lib/auth-client'
 import type { InvalidField } from './validation'
 import type { ProfileEvaluation } from './requirements'
-import type { StudentProfileData, UploadedDocumentDTO, DocumentId } from './types'
+import type {
+  ApplicationReminder,
+  ApplicationWithEvaluation,
+  DocumentId,
+  HubApplicationStatus,
+  StudentProfileData,
+  UploadedDocumentDTO,
+} from './types'
+
+export interface ProfileVersionSummary {
+  id: string
+  version: number
+  reason: string
+  changedFields: string[]
+  createdAt: string
+}
 
 interface ProfileResponse {
   profile: StudentProfileData | null
   evaluation: ProfileEvaluation
+  history?: ProfileVersionSummary[]
 }
 
 export interface ProfileSaveResponse extends ProfileResponse {
@@ -36,7 +52,7 @@ export type WorkspaceStatus =
   | 'unavailable' // signed out: the cookie's workspace is claimed by some account
 
 /**
- * Creates/reads the Apply AI workspace. Must complete before profile or
+ * Creates/reads the Formly workspace. Must complete before profile or
  * document queries run for signed-out visitors — and for signed-in users it
  * resolves (or mints) an account-owned workspace. The token value never
  * reaches client code. Re-runs automatically when the session identity
@@ -105,6 +121,7 @@ export function useClaimWorkspace() {
 
 const PROFILE_KEY = ['apply-ai', 'profile'] as const
 const DOCUMENTS_KEY = ['apply-ai', 'documents'] as const
+const STORAGE_PROVIDER_KEY = ['apply-ai', 'storage-provider'] as const
 
 export function useProfile(enabled: boolean) {
   return useQuery({
@@ -139,11 +156,55 @@ export function useSaveProfile() {
   })
 }
 
+export interface Class12ResultInput {
+  class12PassingYear: string
+  class12RollNumber?: string | null
+  class12MarksKind?: string | null
+  class12Marks?: string | null
+  class12Percentage?: string | null
+  class12Subjects?: unknown[]
+  resultDeclaredOn?: string | null
+}
+
+export function useUpdateClass12Results() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (input: Class12ResultInput): Promise<ProfileSaveResponse> => {
+      const res = await fetch('/api/apply/profile/class12-results', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(input),
+      })
+      const body = await res.json().catch(() => null)
+      if (!res.ok) {
+        const error = new Error(
+          (body as { error?: string } | null)?.error ?? 'Could not update the Class 12 result'
+        ) as ProfileSaveError
+        error.invalidFields = (body as { invalidFields?: InvalidField[] } | null)?.invalidFields
+        throw error
+      }
+      return body as ProfileSaveResponse
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: PROFILE_KEY })
+      queryClient.invalidateQueries({ queryKey: APPLICATIONS_KEY })
+    },
+  })
+}
+
 export function useDocuments(enabled: boolean) {
   return useQuery({
     queryKey: DOCUMENTS_KEY,
     queryFn: () => jsonFetcher<{ documents: UploadedDocumentDTO[] }>('/api/apply/documents'),
     enabled,
+  })
+}
+
+export function useStorageProvider() {
+  return useQuery({
+    queryKey: STORAGE_PROVIDER_KEY,
+    queryFn: () => jsonFetcher<{ provider: 'local' | 'r2' }>('/api/apply/config/storage'),
+    staleTime: Infinity,
   })
 }
 
@@ -213,7 +274,502 @@ export function useRenameDocument() {
   })
 }
 
+export interface DocumentMetadataInput {
+  displayLabel?: string
+  certificateNumber?: string | null
+  issuingAuthority?: string | null
+  issuingState?: string | null
+  issueDate?: string | null
+  validUntil?: string | null
+  financialYear?: string | null
+  verificationStatus?: 'SELF_REPORTED' | 'STUDENT_CONFIRMED'
+}
+
+export function useUpdateDocumentMetadata() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (input: { documentId: string; metadata: DocumentMetadataInput }) => {
+      const res = await fetch(`/api/apply/documents/${encodeURIComponent(input.documentId)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(input.metadata),
+      })
+      const body = (await res.json().catch(() => null)) as
+        | { document?: UploadedDocumentDTO; error?: string }
+        | null
+      if (!res.ok || !body?.document) {
+        throw new Error(body?.error ?? 'Could not save the document metadata')
+      }
+      return body.document
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: DOCUMENTS_KEY })
+      queryClient.invalidateQueries({ queryKey: PROFILE_KEY })
+    },
+  })
+}
+
+export function useDocumentVersions(documentId: string | null, enabled: boolean) {
+  return useQuery({
+    queryKey: ['apply-ai', 'documents', documentId, 'versions'],
+    queryFn: () =>
+      jsonFetcher<{ documents: UploadedDocumentDTO[] }>(
+        `/api/apply/documents/${encodeURIComponent(documentId ?? '')}/versions`
+      ),
+    enabled: enabled && !!documentId,
+  })
+}
+
 export { PROFILE_KEY, DOCUMENTS_KEY }
+
+/* ---------------- Application Hub ---------------- */
+
+export const APPLICATIONS_KEY = ['apply-ai', 'applications'] as const
+export const APPLICATION_KEY = (id: string) => ['apply-ai', 'applications', id] as const
+
+export interface ApplicationsEnvelope {
+  applications: ApplicationWithEvaluation[]
+  reminders: ApplicationReminder[]
+}
+
+export interface ApplicationEnvelope {
+  application: ApplicationWithEvaluation
+}
+
+export type ApplicationMutationError = Error & {
+  code?: string
+  existingId?: string | null
+}
+
+export function useApplications(enabled: boolean) {
+  return useQuery({
+    queryKey: APPLICATIONS_KEY,
+    queryFn: () => jsonFetcher<ApplicationsEnvelope>('/api/apply/applications'),
+    enabled,
+  })
+}
+
+export function useApplication(id: string, enabled: boolean) {
+  return useQuery({
+    queryKey: APPLICATION_KEY(id),
+    queryFn: () => jsonFetcher<ApplicationEnvelope>(`/api/apply/applications/${encodeURIComponent(id)}`),
+    enabled: enabled && id.length > 0,
+  })
+}
+
+export function useCreateApplication() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (input: {
+      examId: string
+      sessionId: string
+      notes?: string
+    }): Promise<ApplicationEnvelope> => {
+      const res = await fetch('/api/apply/applications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(input),
+      })
+      const body = await res.json().catch(() => null)
+      if (!res.ok) {
+        const error = new Error(
+          (body as { error?: string } | null)?.error ?? 'Could not add this application'
+        ) as ApplicationMutationError
+        error.code = (body as { code?: string } | null)?.code
+        error.existingId = (body as { existingId?: string | null } | null)?.existingId
+        throw error
+      }
+      return body as ApplicationEnvelope
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: APPLICATIONS_KEY })
+    },
+  })
+}
+
+export interface UpdateApplicationInput {
+  status?: HubApplicationStatus
+  notes?: string | null
+  preferences?: Record<string, string>
+  checklist?: Record<string, boolean>
+  refreshDeadline?: boolean
+  reviewMapping?: boolean
+}
+
+export function useUpdateApplication(id: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (input: UpdateApplicationInput): Promise<ApplicationEnvelope> => {
+      const res = await fetch(`/api/apply/applications/${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(input),
+      })
+      const body = await res.json().catch(() => null)
+      if (!res.ok) {
+        const error = new Error(
+          (body as { error?: string } | null)?.error ?? 'Could not update this application'
+        ) as ApplicationMutationError
+        error.code = (body as { code?: string } | null)?.code
+        throw error
+      }
+      return body as ApplicationEnvelope
+    },
+    onSuccess: envelope => {
+      queryClient.setQueryData(APPLICATION_KEY(id), envelope)
+      queryClient.invalidateQueries({ queryKey: APPLICATIONS_KEY })
+    },
+  })
+}
+
+export function useApplicationSubmission(id: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (input: {
+      action: 'CONFIRM_STUDENT_SUBMITTED' | 'RECORD_PORTAL_CONFIRMATION' | 'CLEAR'
+      confirmed?: boolean
+      portalReference?: string
+    }): Promise<ApplicationEnvelope> => {
+      const res = await fetch(
+        `/api/apply/applications/${encodeURIComponent(id)}/submission`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(input),
+        }
+      )
+      const body = await res.json().catch(() => null)
+      if (!res.ok) {
+        throw new Error(
+          (body as { error?: string } | null)?.error ?? 'Could not record the submission action'
+        )
+      }
+      return body as ApplicationEnvelope
+    },
+    onSuccess: envelope => {
+      queryClient.setQueryData(APPLICATION_KEY(id), envelope)
+      queryClient.invalidateQueries({ queryKey: APPLICATIONS_KEY })
+    },
+  })
+}
+
+export function useDeleteApplication() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (id: string): Promise<void> => {
+      const res = await fetch(`/api/apply/applications/${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+      })
+      if (!res.ok) {
+        const body = (await res.json().catch(() => null)) as { error?: string } | null
+        throw new Error(body?.error ?? 'Could not remove this application')
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: APPLICATIONS_KEY })
+    },
+  })
+}
+
+/* ---------------- Billing & Credits ---------------- */
+
+const CREDIT_ACCOUNT_KEY = ['billing', 'account'] as const
+const CREDIT_TRANSACTIONS_KEY = ['billing', 'transactions'] as const
+const CREDIT_PACKAGES_KEY = ['billing', 'packages'] as const
+const PAYMENT_ORDERS_KEY = ['billing', 'orders'] as const
+
+export interface CreditAccountDTO {
+  balance: number
+  totalEarned: number
+  totalSpent: number
+  activeReservations: number
+}
+
+export interface CreditPackageDTO {
+  code: string
+  name: string
+  credits: number
+  amountPaise: number
+  currency: string
+  amountRupees: number
+  perCreditPaise: number
+}
+
+export function useCreditAccount(enabled: boolean) {
+  return useQuery({
+    queryKey: CREDIT_ACCOUNT_KEY,
+    queryFn: () => jsonFetcher<{ account: CreditAccountDTO }>('/api/billing/account').then(r => r.account),
+    enabled,
+  })
+}
+
+export function useCreditTransactions(enabled: boolean) {
+  return useQuery({
+    queryKey: CREDIT_TRANSACTIONS_KEY,
+    queryFn: () => jsonFetcher<{ entries: unknown[] }>('/api/billing/transactions').then(r => r.entries),
+    enabled,
+  })
+}
+
+export function useCreditPackages() {
+  return useQuery({
+    queryKey: CREDIT_PACKAGES_KEY,
+    queryFn: () => jsonFetcher<{ packages: CreditPackageDTO[] }>('/api/billing/packages').then(r => r.packages),
+  })
+}
+
+export interface PaymentOrderDTO {
+  id: string
+  provider: string
+  providerOrderId: string | null
+  providerPaymentId: string | null
+  packageCode: string
+  credits: number
+  amountPaise: number
+  currency: string
+  status: string
+  paidAt: string | null
+  verifiedAt: string | null
+  createdAt: string
+}
+
+export function usePaymentOrders(enabled: boolean) {
+  return useQuery({
+    queryKey: PAYMENT_ORDERS_KEY,
+    queryFn: () => jsonFetcher<{ orders: PaymentOrderDTO[] }>('/api/billing/orders').then(r => r.orders),
+    enabled,
+  })
+}
+
+export function useCreatePaymentOrder() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (
+      packageCode: string
+    ): Promise<{ order: PaymentOrderDTO; keyId: string | null; configured: boolean }> => {
+      const res = await fetch('/api/billing/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ packageCode }),
+      })
+      const body = await res.json().catch(() => null)
+      if (!res.ok) {
+        throw new Error((body as { error?: string } | null)?.error ?? 'Could not create payment order')
+      }
+      return {
+        order: (body as { order: PaymentOrderDTO }).order,
+        keyId: (body as { keyId?: string | null }).keyId ?? null,
+        configured: (body as { configured?: boolean }).configured ?? false,
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: PAYMENT_ORDERS_KEY })
+    },
+  })
+}
+
+export function useVerifyPayment() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (input: {
+      internalOrderId: string
+      razorpayPaymentId: string
+      razorpayOrderId: string
+      razorpaySignature: string
+    }): Promise<PaymentOrderDTO> => {
+      const res = await fetch('/api/billing/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(input),
+      })
+      const body = await res.json().catch(() => null)
+      if (!res.ok) {
+        throw new Error((body as { error?: string } | null)?.error ?? 'Could not verify payment')
+      }
+      return (body as { order: PaymentOrderDTO }).order
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: PAYMENT_ORDERS_KEY })
+      queryClient.invalidateQueries({ queryKey: CREDIT_ACCOUNT_KEY })
+      queryClient.invalidateQueries({ queryKey: CREDIT_TRANSACTIONS_KEY })
+    },
+  })
+}
+
+/* ---------------- Referrals & Affiliate Marketing ---------------- */
+
+export interface ReferralDashboardDTO {
+  partner: {
+    id: string
+    name: string
+    email: string
+    tier: string
+    commissionBasisPoints: number
+    isActive: boolean
+  }
+  codes: string[]
+  stats: {
+    clicks: number
+    registrations: number
+    conversions: number
+    conversionRate: number
+    totalCommission: number
+    pendingCommission: number
+    approvedCommission: number
+    paidCommission: number
+  }
+}
+
+const REFERRAL_DASHBOARD_KEY = ['referral', 'dashboard'] as const
+const REFERRAL_COMMISSIONS_KEY = ['referral', 'commissions'] as const
+const REFERRAL_PAYOUTS_KEY = ['referral', 'payouts'] as const
+const ADMIN_PARTNERS_KEY = ['admin', 'referrals', 'partners'] as const
+const ADMIN_COMMISSIONS_KEY = ['admin', 'referrals', 'commissions'] as const
+
+export function useReferralDashboard(enabled: boolean) {
+  return useQuery({
+    queryKey: REFERRAL_DASHBOARD_KEY,
+    queryFn: () => jsonFetcher<ReferralDashboardDTO>('/api/partner/dashboard'),
+    enabled,
+  })
+}
+
+export function useReferralCommissions(enabled: boolean) {
+  return useQuery({
+    queryKey: REFERRAL_COMMISSIONS_KEY,
+    queryFn: () => jsonFetcher<{ commissions: unknown[] }>('/api/partner/commissions').then(r => r.commissions),
+    enabled,
+  })
+}
+
+export function useReferralPayouts(enabled: boolean) {
+  return useQuery({
+    queryKey: REFERRAL_PAYOUTS_KEY,
+    queryFn: () => jsonFetcher<{ payouts: unknown[] }>('/api/partner/payouts').then(r => r.payouts),
+    enabled,
+  })
+}
+
+export function useAdminPartners(enabled: boolean) {
+  return useQuery({
+    queryKey: ADMIN_PARTNERS_KEY,
+    queryFn: () => jsonFetcher<{ partners: unknown[] }>('/api/admin/referrals/partners').then(r => r.partners),
+    enabled,
+  })
+}
+
+export function useAdminCommissions(status: string | null, enabled: boolean) {
+  return useQuery({
+    queryKey: [...ADMIN_COMMISSIONS_KEY, status],
+    queryFn: () =>
+      jsonFetcher<{ commissions: unknown[] }>(
+        `/api/admin/referrals/commissions${status ? `?status=${encodeURIComponent(status)}` : ''}`
+      ).then(r => r.commissions),
+    enabled,
+  })
+}
+
+export function useCreatePartner() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (input: {
+      name: string
+      email: string
+      phone?: string
+      tier?: 'STUDENT_AMBASSADOR' | 'CAMPUS_REPRESENTATIVE' | 'MARKETING_PARTNER'
+      commissionBasisPoints?: number
+      holdingDays?: number
+      notes?: string
+    }) => {
+      const res = await fetch('/api/admin/referrals/partners', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(input),
+      })
+      const body = await res.json().catch(() => null)
+      if (!res.ok) {
+        throw new Error((body as { error?: string } | null)?.error ?? 'Could not create partner')
+      }
+      return body as { partner: unknown }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ADMIN_PARTNERS_KEY })
+    },
+  })
+}
+
+export function useApproveCommission() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (commissionId: string) => {
+      const res = await fetch(`/api/admin/referrals/commissions/${encodeURIComponent(commissionId)}/approve`, {
+        method: 'POST',
+      })
+      const body = await res.json().catch(() => null)
+      if (!res.ok) {
+        throw new Error((body as { error?: string } | null)?.error ?? 'Could not approve commission')
+      }
+      return body as { commission: unknown }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ADMIN_COMMISSIONS_KEY })
+      queryClient.invalidateQueries({ queryKey: REFERRAL_COMMISSIONS_KEY })
+      queryClient.invalidateQueries({ queryKey: REFERRAL_DASHBOARD_KEY })
+    },
+  })
+}
+
+export function useRejectCommission() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (commissionId: string) => {
+      const res = await fetch(`/api/admin/referrals/commissions/${encodeURIComponent(commissionId)}/reject`, {
+        method: 'POST',
+      })
+      const body = await res.json().catch(() => null)
+      if (!res.ok) {
+        throw new Error((body as { error?: string } | null)?.error ?? 'Could not reject commission')
+      }
+      return body as { commission: unknown }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ADMIN_COMMISSIONS_KEY })
+      queryClient.invalidateQueries({ queryKey: REFERRAL_COMMISSIONS_KEY })
+      queryClient.invalidateQueries({ queryKey: REFERRAL_DASHBOARD_KEY })
+    },
+  })
+}
+
+export function useRecordPayout() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (input: {
+      partnerId: string
+      amountPaise: number
+      commissionIds: string[]
+      method?: string
+      reference?: string
+      notes?: string
+    }) => {
+      const res = await fetch('/api/admin/referrals/payouts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(input),
+      })
+      const body = await res.json().catch(() => null)
+      if (!res.ok) {
+        throw new Error((body as { error?: string } | null)?.error ?? 'Could not record payout')
+      }
+      return body as { payout: unknown }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ADMIN_COMMISSIONS_KEY })
+      queryClient.invalidateQueries({ queryKey: ADMIN_PARTNERS_KEY })
+      queryClient.invalidateQueries({ queryKey: REFERRAL_PAYOUTS_KEY })
+      queryClient.invalidateQueries({ queryKey: REFERRAL_DASHBOARD_KEY })
+    },
+  })
+}
 
 /* ---------------- Apply Agent (V1) ---------------- */
 
@@ -228,10 +784,21 @@ export interface AgentPlanItem {
   needsReview: boolean
   reason: string
   firedByAi: boolean
+  group?: string
 }
 
 export interface AgentPlanPreview {
   createdAt: string
+  adapter?: string
+  adapterLabel?: string | null
+  adapterStatus?: string | null
+  adapterNote?: string | null
+  page?: {
+    url: string
+    kind: string
+    fingerprint: string | null
+    supported: boolean
+  } | null
   aiUsed: boolean
   aiNote: string | null
   counts: {

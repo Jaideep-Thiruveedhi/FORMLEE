@@ -30,7 +30,7 @@ export default function ApplyDocumentsPage() {
           <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative'>
             <div className='max-w-3xl'>
               <span className='inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-primary/10 text-primary border border-primary/20 mb-4'>
-                ✦ Apply AI · Documents
+                Formlee · Documents
               </span>
               <h1 className='text-3xl sm:text-4xl font-bold tracking-tight text-foreground mb-3'>
                 Document manager
@@ -42,7 +42,7 @@ export default function ApplyDocumentsPage() {
               <p className='mt-3 text-xs text-muted-foreground max-w-2xl flex flex-wrap items-center gap-2'>
                 <UnverifiedBadge />
                 <span>
-                  Uploaded never means verified. No examination body or Rankora checks these files here — only the
+                  Uploaded never means verified. No examination body or Formlee checks these files here — only the
                   official portal can verify anything, and the checklist below is a general preparation aid, not an
                   official requirement list of any exam.
                 </span>
@@ -73,7 +73,7 @@ export default function ApplyDocumentsPage() {
             <a href='/apply/profile#profile-section-preferences' className='text-primary hover:underline'>
               profile preferences
             </a>{' '}
-            — Rankora decides nothing about eligibility on your behalf.
+            — Formlee decides nothing about eligibility on your behalf.
           </p>
         </div>
       </footer>

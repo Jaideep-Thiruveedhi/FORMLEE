@@ -173,13 +173,13 @@ export function PreparationWorkflow({
           <p className='text-sm font-semibold text-green-800'>All set for review</p>
           <p className='text-xs text-green-700 mt-1'>
             Every configured requirement is met based on your saved profile and uploaded documents. Review your
-            details, then submit on the official portal yourself — Rankora does not submit applications.
+            details, then submit on the official portal yourself — Formlee does not submit applications.
           </p>
         </div>
       )}
 
       <div className='bg-secondary border border-border rounded-xl p-4 text-xs text-secondary-foreground leading-relaxed'>
-        <strong className='font-semibold'>About submission:</strong> Rankora does not submit applications to
+        <strong className='font-semibold'>About submission:</strong> Formlee does not submit applications to
         examination portals, handle CAPTCHAs, OTPs or payments. When this tracker says you are ready, you complete
         the official submission yourself on the examination body&apos;s portal.
       </div>

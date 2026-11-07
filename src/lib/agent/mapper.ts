@@ -1,14 +1,12 @@
 import { z } from 'zod'
 import type { Prisma } from '@prisma/client'
 import {
-  AGENT_FILLABLE_SET,
-  AGENT_MANUAL_ONLY_SET,
-  matchFieldDeterministically,
-  type AgentMappingCandidate,
   type AgentTargetStatus,
-  type OptionPair,
 } from './fields'
-import { mapFieldsWithOllama } from './ollama'
+import { classifyUrl } from './registry'
+import type { AgentAdapterId, AgentPageContext, AgentPageKind } from './adapter-types'
+import { recognizeFields } from './recognition/pipeline'
+import type { FieldRecognitionResult, RecognitionSource, RecognitionConfidence } from './recognition/types'
 import { prisma } from '@/lib/prisma'
 
 /**
@@ -31,6 +29,9 @@ export const agentFieldDescriptorSchema = z.object({
   required: z.boolean().default(false),
   inputType: z.string().max(20).optional(),
   autocomplete: z.string().max(20).optional(),
+  /** Nearest fieldset legend / accessible group label (JEE adapter needs it
+   * to distinguish Class 10 from Class 12 and date-of-birth parts). */
+  group: z.string().max(240).default(''),
   options: z
     .array(
       z.object({
@@ -43,22 +44,29 @@ export const agentFieldDescriptorSchema = z.object({
 })
 
 export type AgentFieldDescriptor = z.infer<typeof agentFieldDescriptorSchema>
+export type { AgentPageContext } from './adapter-types'
+
+export const agentPageContextSchema = z.object({
+  /** Origin + pathname only. Query strings can contain one-time portal
+   * tokens and are rejected by the route. */
+  url: z.string().min(1).max(2048),
+  kind: z.enum([
+    'generic',
+    'personal',
+    'qualification',
+    'exam',
+    'documents',
+    'declaration',
+    'login',
+    'unknown',
+  ]),
+  fingerprint: z.string().regex(/^[0-9a-f]{8,32}$/).optional(),
+})
 
 export const agentMapRequestSchema = z.object({
   fields: z.array(agentFieldDescriptorSchema).min(1).max(120),
+  page: agentPageContextSchema.optional(),
 })
-
-/** The kinds the deterministic engine + AI tier map. File/hidden/password
- * inputs never reach this module (the content script filters them first; the
- * unsafe-field guard re-checks here). */
-const AI_ELIGIBLE_KINDS: ReadonlySet<string> = new Set([
-  'text',
-  'textarea',
-  'select',
-  'radio',
-  'date',
-  'number',
-])
 
 export interface AgentPlanItem {
   index: number
@@ -71,10 +79,28 @@ export interface AgentPlanItem {
   needsReview: boolean
   reason: string
   firedByAi: boolean
+  group: string
+  source?: RecognitionSource
+  confidence?: RecognitionConfidence
+  warnings?: string[]
+  optionMappingSuggestion?: Record<string, string>
+  options?: { text: string; value: string }[]
+}
+
+export interface AgentFillPlanPage {
+  url: string
+  kind: AgentPageKind
+  fingerprint: string | null
+  supported: boolean
 }
 
 export interface AgentFillPlan {
   createdAt: string
+  adapter: AgentAdapterId
+  adapterLabel: string | null
+  adapterStatus: string | null
+  adapterNote: string | null
+  page: AgentFillPlanPage | null
   aiUsed: boolean
   aiNote: string | null
   counts: {
@@ -88,79 +114,66 @@ export interface AgentFillPlan {
   items: AgentPlanItem[]
 }
 
-interface PendingAiDescriptor {
-  descriptor: AgentFieldDescriptor
-  candidate: AgentMappingCandidate
-}
-
-function optionPairsOf(descriptor: AgentFieldDescriptor): OptionPair[] {
-  return descriptor.options.map(o => ({ text: o.text, value: o.value ?? '' }))
-}
-
 /**
  * Builds the redacted fill plan for one detection round. Identifiers
  * (inputName/inputId) are kept OUT of the stored plan: the page preview shows
  * labels/status only, and the plan never contains student values.
+ *
+ * When `page` matches a registered examination adapter, the generic alias
+ * engine AND the local model are bypassed. Only that adapter's strict,
+ * documentation-backed rules may produce `mapped` items.
  */
-export async function buildAgentFillPlan(descriptors: AgentFieldDescriptor[]): Promise<AgentFillPlan> {
-  const decisions: { descriptor: AgentFieldDescriptor; candidate: AgentMappingCandidate; firedByAi: boolean }[] = []
-  const pendingAi: PendingAiDescriptor[] = []
+export async function buildAgentFillPlan(
+  descriptors: AgentFieldDescriptor[],
+  options: { page?: AgentPageContext; sensitiveValues?: string[] } = {}
+): Promise<AgentFillPlan> {
+  const page = options.page
+  const registryResult = page ? classifyUrl(page.url) : null
+  const adapter = registryResult?.adapter ?? null
+  const classification = registryResult?.classification ?? null
+  const blockedPage = !!page && (classification?.adapter === 'none' || adapter === null)
+  const pageKind: AgentPageKind = page?.kind ?? 'unknown'
+  const adapterSupported = adapter !== null && adapter.isSupportedPageKind(pageKind)
 
-  for (const descriptor of descriptors) {
-    const candidate = matchFieldDeterministically({
-      kind: descriptor.kind,
-      label: descriptor.label,
-      inputName: descriptor.inputName,
-      inputId: descriptor.inputId,
-      required: descriptor.required,
-      options: optionPairsOf(descriptor),
-      inputType: descriptor.inputType,
-      autocomplete: descriptor.autocomplete,
-    })
-
-    const eligibleForAi =
-      candidate.status === 'unmapped' &&
-      AI_ELIGIBLE_KINDS.has(descriptor.kind) &&
-      descriptor.label.trim().length > 0
-
-    if (eligibleForAi) {
-      pendingAi.push({ descriptor, candidate })
-      decisions.push({ descriptor, candidate, firedByAi: false })
-    } else {
-      decisions.push({ descriptor, candidate, firedByAi: false })
-    }
-  }
-
+  let items: AgentPlanItem[]
   let aiUsed = false
   let aiNote: string | null = null
 
-  if (pendingAi.length > 0) {
-    const aiResult = await mapFieldsWithOllama(pendingAi.map(p => p.descriptor))
-    aiUsed = aiResult.aiUsed
-    aiNote = aiResult.aiNote
-    for (const aiMap of aiResult.suggestions) {
-      const found = decisions.find(d => d.descriptor.index === aiMap.index)
-      if (found && found.candidate.status === 'unmapped') {
-        // Model-suggested mappings always start UNCHECKED in the popup: the
-        // student reviews them explicitly before anything is filled.
-        found.candidate = { status: 'mapped', canonical: aiMap.canonical, ambiguous: [], needsReview: true, reason: 'Mapped by the local Ollama model (labels only) — review before approving' }
-        found.firedByAi = true
-      }
-    }
+  if (blockedPage) {
+    items = descriptors.map(descriptor => ({
+      index: descriptor.index,
+      label: descriptor.label || '(no label detected)',
+      kind: descriptor.kind,
+      required: descriptor.required,
+      status: 'manual',
+      canonical: null,
+      ambiguous: [],
+      needsReview: false,
+      reason: 'This page is not an approved Formly target; nothing will be filled.',
+      firedByAi: false,
+      group: descriptor.group,
+      source: 'UNRESOLVED',
+    }))
+  } else {
+    const { results, summary } = await recognizeFields(descriptors, {
+      adapterId: adapter?.id,
+      pageKind,
+      useHistory: false,
+      sensitiveValues: options.sensitiveValues,
+    })
+    aiUsed = summary.aiUsed
+    aiNote = summary.aiNote
+    const descriptorByIndex = new Map(descriptors.map(d => [d.index, d]))
+    items = results.map(result => recognitionResultToPlanItem(result, descriptorByIndex.get(result.index)!))
   }
 
-  const items: AgentPlanItem[] = decisions.map(({ descriptor, candidate, firedByAi }) => ({
-    index: descriptor.index,
-    label: descriptor.label || '(no label detected)',
-    kind: descriptor.kind,
-    required: descriptor.required,
-    status: candidate.status === 'unmapped' && descriptor.label.trim().length === 0 ? 'manual' : candidate.status,
-    canonical: candidate.canonical,
-    ambiguous: candidate.ambiguous,
-    needsReview: candidate.needsReview,
-    reason: candidate.reason,
-    firedByAi,
-  }))
+  // Fields with no readable label cannot be safely interpreted.
+  for (const item of items) {
+    if (item.status === 'unmapped' && item.label.trim().length === 0) {
+      item.status = 'manual'
+      item.reason = 'No readable label detected'
+    }
+  }
 
   const counts = {
     detected: items.length,
@@ -171,12 +184,58 @@ export async function buildAgentFillPlan(descriptors: AgentFieldDescriptor[]): P
     unmapped: items.filter(i => i.status === 'unmapped').length,
   }
 
+  const pagePlan: AgentFillPlanPage | null = page
+    ? {
+        url: classification?.sanitizedUrl ?? page.url,
+        kind: page.kind,
+        fingerprint: page.fingerprint ?? null,
+        supported: blockedPage ? false : adapterSupported,
+      }
+    : null
+
+  const adapterNote = adapter
+    ? adapterSupported
+      ? `${adapter.name} adapter: only documented ${adapter.fillablePageKinds.join('/')} labels are mapped. The local model is not used on this page.`
+      : adapter.pageNotice(pageKind)
+    : blockedPage
+      ? 'This page is not an approved Formly target; nothing will be filled.'
+      : null
+
   return {
     createdAt: new Date().toISOString(),
+    adapter: classification?.adapter ?? 'generic',
+    adapterLabel: adapter?.name ?? null,
+    adapterStatus: adapter?.statusLabel ?? null,
+    adapterNote,
+    page: pagePlan,
     aiUsed,
     aiNote,
     counts,
     items,
+  }
+}
+
+function recognitionResultToPlanItem(
+  result: FieldRecognitionResult,
+  descriptor: AgentFieldDescriptor
+): AgentPlanItem {
+  return {
+    index: result.index,
+    label: descriptor.label || '(no label detected)',
+    kind: descriptor.kind,
+    required: descriptor.required,
+    status: result.status,
+    canonical: result.canonical,
+    ambiguous: result.ambiguous,
+    needsReview: result.needsReview,
+    reason: result.reason,
+    firedByAi: result.source === 'AI_SUGGESTION',
+    group: descriptor.group,
+    source: result.source,
+    confidence: result.confidence,
+    warnings: result.warnings,
+    optionMappingSuggestion: result.optionMappingSuggestion,
+    options: descriptor.options,
   }
 }
 

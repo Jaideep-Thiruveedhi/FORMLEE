@@ -39,7 +39,7 @@ const STATUS_SUMMARY_STYLES: Record<ApplicationStatus, string> = {
 }
 
 /**
- * Apply AI dashboard (Milestone 2): profile and documents are read from the
+ * Formlee workspace dashboard: profile and documents are read from the
  * server workspace; readiness for each exam is computed from concrete
  * configured requirements, never from arbitrary percentages.
  */
@@ -128,19 +128,30 @@ export default function ApplyAIDashboard() {
           <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative'>
             <div className='max-w-3xl'>
               <span className='inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-primary/10 text-primary border border-primary/20 mb-4'>
-                âœ¦ Apply AI
+                Application workspace
               </span>
               <h1 className='text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-foreground mb-4'>
-                Rankora <span className='text-primary'>Apply AI</span>
+                Formlee <span className='text-primary'>workspace</span>
               </h1>
               <p className='text-lg text-muted-foreground max-w-2xl'>
                 Manage your examination applications from one place. Build your profile once, upload each
-                document once, and see exactly which readiness requirements remain for every exam â€” before you
+                document once, and see exactly which readiness requirements remain for every exam - before you
                 submit on the official portal yourself.
               </p>
               <p className='mt-3 text-xs text-muted-foreground max-w-2xl'>
                 {OFFICIAL_SOURCE_NOTE}
               </p>
+              <div className='mt-5 flex flex-wrap items-center gap-2'>
+                <Link
+                  href='/apply/applications'
+                  className='inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors'
+                >
+                  Open Application Hub →
+                </Link>
+                <span className='text-xs text-muted-foreground'>
+                  Track deadlines, requirements and per-exam status in one place.
+                </span>
+              </div>
             </div>
           </div>
         </section>
@@ -195,20 +206,21 @@ export default function ApplyAIDashboard() {
             <section className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'>
               {workspaceStatus === 'existing' || workspaceStatus === 'created' ? (
               <div className='flex flex-col sm:flex-row sm:items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3'>
-                <span className='text-lg' aria-hidden>ðŸ”</span>
-                <p className='text-xs text-amber-800 flex-1'>
-                  <strong className='font-semibold'>Demonstration workspace:</strong> your profile and documents
-                  are self-entered and unverified â€” stored only for this browser (no accounts yet). Rankora never
-                  submits applications, fills CAPTCHAs/OTPs, or makes payments, and never invents exam deadlines,
-                  fees or eligibility rules.
-                </p>
-                    <p className='mt-1'>
-                      Create an account or{' '}
-                      <Link href='/login' className='font-semibold underline hover:text-amber-900'>
-                        sign in
-                      </Link>{' '}
-                      to keep this work.
-                    </p>
+                <span className='text-lg' aria-hidden>🔍</span>
+                <div className='text-xs text-amber-800 flex-1'>
+                  <p>
+                    <strong className='font-semibold'>Browser workspace:</strong> your profile and documents are
+                    self-entered and unverified. Create an account or{' '}
+                    <Link href='/login' className='font-semibold underline hover:text-amber-900'>
+                      sign in
+                    </Link>{' '}
+                    to keep this work across devices.
+                  </p>
+                  <p className='mt-1'>
+                    Formlee never submits applications, fills CAPTCHAs/OTPs, or makes payments, and never invents
+                    exam deadlines, fees or eligibility rules.
+                  </p>
+                </div>
                 <button
                   type='button'
                   onClick={() => {
@@ -248,7 +260,7 @@ export default function ApplyAIDashboard() {
               <div className='grid md:grid-cols-2 gap-4'>
                 <WorkspaceLinkCard
                   href='/apply/profile'
-                  icon='ðŸ§'
+                  icon='P'
                   title='Student profile'
                   description='Identity, Class 10 & 12 academics and preferences â€” filled once, reused by every exam.'
                   stat={profileEvaluation.completedSections + ' of ' + profileEvaluation.totalSections + ' sections complete'}
@@ -256,7 +268,7 @@ export default function ApplyAIDashboard() {
                 />
                 <WorkspaceLinkCard
                   href='/apply/documents'
-                  icon='ðŸ“Ž'
+                  icon='D'
                   title='Document manager'
                   description='Upload the checklist once â€” photograph, signature, marksheets â€” and reuse for every exam.'
                   stat={
@@ -339,11 +351,11 @@ export default function ApplyAIDashboard() {
 
       <footer className='border-t border-border bg-background py-8'>
         <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-xs text-muted-foreground'>
-          <p>Rankora Apply AI â€” Milestone 2: server-backed student profile &amp; document manager.</p>
+          <p>Formlee — your reusable profile and document workspace for entrance-exam applications.</p>
           <p className='mt-1'>
-            Rankora never fills, submits, or verifies exam applications on official portals, and does not bypass
-            CAPTCHAs, OTPs or payment confirmations. Uploaded documents are never officially verified merely by
-            being stored here.
+            Formlee never submits or verifies exam applications on official portals, and does not bypass CAPTCHAs,
+            OTPs or payment confirmations. Uploaded documents are never officially verified merely by being stored
+            here.
           </p>
         </div>
       </footer>

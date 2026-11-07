@@ -60,7 +60,7 @@ export function AgentConnectionCard({ state, loading }: { state: ReturnType<type
             Paired at {formatTime(state?.pairedAt)} · agent session valid until {formatTime(state?.expiresAt)}.
           </p>
           <p className='text-xs text-foreground bg-green-50 border border-green-200 text-green-900 rounded-xl p-3'>
-            Open the <span className='font-semibold'>Rankora Apply Agent</span> popup on the page holding your form to
+            Open the <span className='font-semibold'>Formlee Apply Agent</span> popup on the page holding your form to
             run detection, review the plan and approve the fill. Filling always starts from an explicit click inside
             the extension.
           </p>
@@ -79,7 +79,7 @@ export function AgentConnectionCard({ state, loading }: { state: ReturnType<type
         <div className='space-y-3'>
           <ol className='text-xs text-muted-foreground space-y-1 list-decimal list-inside'>
             <li>Click below to create a one-time pairing code for this browser&apos;s workspace.</li>
-            <li>Open the Rankora Apply Agent extension popup (toolbar icon) within 15 minutes.</li>
+            <li>Open the Formlee Apply Agent extension popup (toolbar icon) within 15 minutes.</li>
             <li>Paste the code there — the extension then holds a short-lived, workspace-scoped session only.</li>
           </ol>
 

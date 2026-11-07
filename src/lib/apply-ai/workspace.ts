@@ -1,13 +1,15 @@
 import { randomBytes } from 'node:crypto'
 import { cookies, headers } from 'next/headers'
-import { auth } from '@/lib/auth'
+import { getAuth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { Prisma } from '@prisma/client'
 
+// Internal cookie name retained for compatibility with existing workspaces.
+// It is never shown to students and is not part of the product identity.
 export const WORKSPACE_COOKIE = 'rankora_workspace'
 
 /**
- * Apply AI workspace ownership (Milestone 3).
+ * Formly workspace ownership (Milestone 3).
  *
  * Two kinds of workspace coexist and are resolved ONLY in this module:
  *
@@ -71,7 +73,7 @@ export async function resolveWorkspaceContext(): Promise<WorkspaceContext> {
   const [authHeaders, cookieStore] = await Promise.all([headers(), cookies()])
   const token = readWorkspaceToken(cookieStore.get(WORKSPACE_COOKIE)?.value)
 
-  const session = await auth.api.getSession({ headers: authHeaders })
+  const session = await getAuth().api.getSession({ headers: authHeaders })
 
   if (session?.user) {
     const owned = await prisma.workspace.findFirst({
@@ -148,7 +150,7 @@ export async function ensureWorkspace(): Promise<WorkspaceStatus> {
   const [authHeaders, cookieStore] = await Promise.all([headers(), cookies()])
   const token = readWorkspaceToken(cookieStore.get(WORKSPACE_COOKIE)?.value)
 
-  const session = await auth.api.getSession({ headers: authHeaders })
+  const session = await getAuth().api.getSession({ headers: authHeaders })
 
   if (session?.user) {
     const owned = await prisma.workspace.findFirst({
@@ -220,7 +222,7 @@ function prismaUniqueTarget(error: unknown): string {
  */
 export async function claimWorkspaceFromCookie(): Promise<ClaimWorkspaceResult> {
   const [authHeaders, cookieStore] = await Promise.all([headers(), cookies()])
-  const session = await auth.api.getSession({ headers: authHeaders })
+  const session = await getAuth().api.getSession({ headers: authHeaders })
 
   if (!session?.user) {
     return {

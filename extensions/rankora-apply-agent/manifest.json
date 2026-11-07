@@ -1,13 +1,36 @@
 {
   "manifest_version": 3,
-  "name": "Rankora Apply Agent",
-  "version": "1.0.0",
-  "description": "AI-assisted autofill for examination application forms. You review and approve every fill. The agent never submits, pays, or bypasses CAPTCHA/OTP.",
-  "permissions": ["storage", "activeTab", "scripting"],
-  "host_permissions": ["http://localhost/*", "http://127.0.0.1/*"],
+  "name": "Formlee Apply Agent",
+  "version": "1.2.0",
+  "description": "Formlee's review-before-fill assistant for examination application forms, including a floating AI pet on supported pages and a Beta documentation-backed JEE Main 2027 adapter. You approve every field; the agent never submits, pays, uploads documents or bypasses CAPTCHA/OTP.",
+  "permissions": ["storage", "activeTab", "scripting", "sidePanel"],
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "host_permissions": [
+    "http://localhost:3000/*",
+    "http://127.0.0.1:3000/*",
+    "https://examinationservices.nic.in/JeeMaink2027/*",
+    "https://viteee.vit.ac.in/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "http://localhost:3000/apply/agent/demo-form*",
+        "http://localhost:3000/apply/agent/jee-main-2027-demo*",
+        "http://localhost:3000/apply/agent/viteee-2027-demo*",
+        "http://127.0.0.1:3000/apply/agent/demo-form*",
+        "http://127.0.0.1:3000/apply/agent/jee-main-2027-demo*",
+        "http://127.0.0.1:3000/apply/agent/viteee-2027-demo*",
+        "https://examinationservices.nic.in/JeeMaink2027/*",
+        "https://viteee.vit.ac.in/*"
+      ],
+      "js": ["shared/agent-core.js", "shared/agent-ui.js", "shared/pet-core.js", "content/pet.js"],
+      "run_at": "document_end"
+    }
+  ],
   "action": {
-    "default_title": "Rankora Apply Agent",
-    "default_popup": "popup.html",
+    "default_title": "Formlee Apply Agent",
     "default_icon": {
       "16": "icons/icon16.png",
       "48": "icons/icon48.png",
@@ -22,5 +45,8 @@
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
   },
-  "minimum_chrome_version": "102"
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self';"
+  },
+  "minimum_chrome_version": "114"
 }

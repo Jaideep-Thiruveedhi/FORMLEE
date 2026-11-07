@@ -1,13 +1,31 @@
 'use client'
 
 import type { FormEvent } from 'react'
-import { useState } from 'react'
+import { useState, useSyncExternalStore } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { z } from 'zod'
 import { authClient } from '@/lib/auth-client'
+import { FormleePetMark } from '@/components/brand/formlee-pet-mark'
+
+async function claimReferralAfterSignup() {
+  try {
+    await fetch('/api/referrals/claim', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })
+  } catch {
+    // Non-blocking: attribution failure must not break registration.
+  }
+}
 
 type Mode = 'sign-in' | 'sign-up'
+
+function subscribeToLocation(callback: () => void) {
+  window.addEventListener('popstate', callback)
+  return () => window.removeEventListener('popstate', callback)
+}
+
+function locationSearch() {
+  return window.location.search
+}
 
 // Friendly copy for the common Better Auth server error codes.
 const serverErrorMessages: Record<string, string> = {
@@ -36,14 +54,16 @@ const signUpSchema = z.object({
  * Honesty rules:
  *  - There is no email delivery in this milestone, so nothing here may claim
  *    that an email was sent or that an address was verified.
- *  - The account "name" is display-only: the student profile inside Apply AI
+ *  - The account "name" is display-only: the student profile inside Formlee
  *    is a separate, user-entered workspace and is never auto-filled from it.
  */
 export default function LoginPage() {
   const router = useRouter()
   const { data: session, isPending: sessionPending } = authClient.useSession()
+  const search = useSyncExternalStore(subscribeToLocation, locationSearch, () => '')
 
-  const [mode, setMode] = useState<Mode>('sign-in')
+  const [modeOverride, setModeOverride] = useState<Mode | null>(null)
+  const mode = modeOverride ?? (new URLSearchParams(search).get('mode') === 'sign-up' ? 'sign-up' : 'sign-in')
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -51,7 +71,7 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null)
 
   const switchMode = (next: Mode) => {
-    setMode(next)
+    setModeOverride(next)
     setError(null)
   }
 
@@ -97,6 +117,9 @@ export default function LoginPage() {
     // Session cookie is set by the server; land on the dashboard. If this
     // browser holds an unclaimed anonymous workspace, the dashboard offers
     // the explicit "Save my work" claim there.
+    if (mode === 'sign-up') {
+      await claimReferralAfterSignup()
+    }
     router.push('/apply')
     router.refresh()
   }
@@ -104,29 +127,25 @@ export default function LoginPage() {
   const signedInUser = session?.user ?? null
 
   return (
-    <div className='min-h-screen bg-gray-50 flex flex-col'>
-      <header className='border-b border-border bg-background/95 backdrop-blur'>
-        <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'>
-          <div className='flex h-16 items-center justify-between'>
-            <Link href='/' className='flex items-center gap-2'>
-              <div className='w-8 h-8 rounded-lg bg-primary flex items-center justify-center'>
-                <span className='text-primary-foreground font-bold text-sm'>R</span>
-              </div>
-              <span className='font-semibold text-xl'>Rankora</span>
-            </Link>
-            <Link
-              href='/apply'
-              className='px-3 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground'
-            >
-              Apply AI
-            </Link>
-          </div>
+    <div className='auth-page'>
+      <header className='auth-header'>
+        <div className='auth-header-inner'>
+          <Link href='/' className='brand-lockup' aria-label='Formlee home'>
+            <FormleePetMark size={36} /><span>formlee<span className='brand-period'>.</span></span>
+          </Link>
+          <Link href='/apply'>Open workspace <span aria-hidden>↗</span></Link>
         </div>
       </header>
 
-      <main className='flex-1 flex items-center justify-center px-4 py-10 sm:py-16'>
+      <main className='auth-main'>
+        <section className='auth-story'>
+          <p className='eyebrow'><span className='eyebrow-line' /> YOUR APPLICATION WORKSPACE</p>
+          <h1>Keep the details.<br /><em>Lose the repeat work.</em></h1>
+          <p>Sign in to reach your Student Information Vault, application trackers and preparation tools.</p>
+          <div className='auth-proof'><span className='auth-proof-mark'><FormleePetMark size={27} /></span><span>Careful assistance. Your choices stay yours.</span></div>
+        </section>
         <div className='w-full max-w-md'>
-          <div className='bg-background border border-border rounded-2xl shadow-sm p-6 sm:p-8'>
+          <div className='auth-card'>
             {sessionPending ? (
               <div className='h-64 flex items-center justify-center'>
                 <div className='w-6 h-6 rounded-full border-2 border-primary border-t-transparent animate-spin' aria-label='Checking your session' />
@@ -137,11 +156,11 @@ export default function LoginPage() {
                 <p className='text-sm text-muted-foreground'>
                   Signed in as <span className='font-medium text-foreground'>{signedInUser.name || signedInUser.email}</span>.
                 </p>
-                <Link
+                  <Link
                   href='/apply'
                   className='inline-flex w-full justify-center px-4 py-2.5 text-sm font-semibold text-primary-foreground bg-primary rounded-lg hover:bg-primary/90 transition-colors'
                 >
-                  Open Apply AI
+                  Open Formlee
                 </Link>
                 <button
                   type='button'
@@ -191,7 +210,7 @@ export default function LoginPage() {
                 <p className='text-sm text-muted-foreground mb-6'>
                   {mode === 'sign-in'
                     ? 'Sign in to reach the profile and documents saved to your account.'
-                    : 'Accounts save your Apply AI profile and documents across sign-ins and devices.'}
+                    : 'Accounts save your Formlee profile and documents across sign-ins and devices.'}
                 </p>
 
                 <form onSubmit={e => { void handleSubmit(e) }} noValidate className='space-y-4'>
@@ -265,7 +284,7 @@ export default function LoginPage() {
 
                 {mode === 'sign-up' ? (
                   <p className='mt-6 text-xs text-muted-foreground leading-relaxed'>
-                    Worked anonymously in this browser before? After creating an account, the Apply AI
+                    Worked anonymously in this browser before? After creating an account, the Formlee
                     dashboard offers <span className='font-semibold text-foreground'>{'Save my work'}</span> to link
                     that existing profile and those documents to it. We never send email in this milestone —
                     registration is immediate and nothing is presented as verified.
@@ -280,11 +299,9 @@ export default function LoginPage() {
             )}
           </div>
 
-          <p className='mt-6 text-center text-xs text-muted-foreground'>
-            Rankora never submits applications, fills CAPTCHAs/OTPs or makes payments — it only helps you prepare.
-          </p>
         </div>
       </main>
+      <footer className='auth-footer'>Formlee never submits applications, fills CAPTCHAs or OTPs, or makes payments on your behalf.</footer>
     </div>
   )
 }

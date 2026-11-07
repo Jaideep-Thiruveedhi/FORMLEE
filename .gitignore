@@ -30,10 +30,10 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files. .env.example is currently EXCLUDED until a sanitized,
-# placeholder-only template is reviewed (it still contains real-looking values).
-# Re-add an explicit negation only after the values have been scrubbed.
+# env files. .env.example is now a sanitized placeholder-only template and
+# is tracked intentionally. All other .env files stay ignored.
 .env*
+!.env.example
 
 # vercel
 .vercel
@@ -42,8 +42,8 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# prisma
-prisma/migrations/
+# prisma migrations are tracked; generated migration files are safe to commit.
+# Only ignore local SQLite/dev artifacts if any are ever added here.
 
 # scripts output
 *.log
