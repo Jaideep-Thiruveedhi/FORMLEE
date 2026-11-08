@@ -153,7 +153,7 @@ test('mapper routes through Phase 7 recognition pipeline', () => {
 })
 
 test('field review surface displays source, confidence and warnings', () => {
-  const sidepanel = read('extensions', 'rankora-apply-agent', 'sidepanel.js')
+  const sidepanel = read('extensions', 'formlee-apply-agent', 'sidepanel.js')
   assert.ok(sidepanel.includes('sourceLabel'))
   assert.ok(sidepanel.includes('confidenceTone'))
   assert.ok(sidepanel.includes('sp-plan-warnings'))
@@ -164,7 +164,7 @@ test('field review surface displays source, confidence and warnings', () => {
 /* --------------------------------------------------------------------------- */
 
 test('browser actions are dispatched through the existing extension', () => {
-  const background = read('extensions', 'rankora-apply-agent', 'background.js')
+  const background = read('extensions', 'formlee-apply-agent', 'background.js')
   assert.ok(background.includes('SCAN_PAGE'))
   assert.ok(background.includes('FILL'))
   assert.ok(background.includes('VERIFY'))
@@ -197,7 +197,7 @@ function extractAsyncFunction(source, name) {
 }
 
 async function simulateReviewedFill({ stalePlan = false, readbackFails = false, readbackValue = 'Synthetic Student' } = {}) {
-  const source = read('extensions', 'rankora-apply-agent', 'background.js')
+  const source = read('extensions', 'formlee-apply-agent', 'background.js')
   const fnSource = extractAsyncFunction(source, 'runFillFromAction')
   const tab = { id: 7, url: 'https://jeemain.nta.nic.in/application' }
   const context = {
@@ -220,11 +220,11 @@ async function simulateReviewedFill({ stalePlan = false, readbackFails = false, 
     approvedAgainstPlan: approved => ({ ok: true, approved }),
     sendToTab: async (_tabId, message) => {
       calls.tab.push(message.type)
-      if (message.type === 'RANKORA_PAGE') {
+      if (message.type === 'FORMLEE_PAGE') {
         return { ok: true, page: { adapter: context.adapter, url: context.url, fingerprint: context.fingerprint, kind: 'personal' } }
       }
-      if (message.type === 'RANKORA_FILL') return { ok: true, results: [{ index: 3, status: 'filled', value: 'Synthetic Student' }] }
-      if (message.type === 'RANKORA_VERIFY') {
+      if (message.type === 'FORMLEE_FILL') return { ok: true, results: [{ index: 3, status: 'filled', value: 'Synthetic Student' }] }
+      if (message.type === 'FORMLEE_VERIFY') {
         return readbackFails
           ? { ok: false, error: 'Synthetic readback failure' }
           : { ok: true, fingerprint: context.fingerprint, results: [{ index: 3, canonical: 'fullName', status: 'filled', value: readbackValue }] }
@@ -257,7 +257,7 @@ test('synthetic approved-fill scenario reads back the exact approved field befor
   const { result, calls } = await simulateReviewedFill()
   assert.equal(result.ok, true)
   assert.equal(result.filled, 1)
-  assert.deepEqual(calls.tab, ['RANKORA_PAGE', 'RANKORA_FILL', 'RANKORA_VERIFY'])
+  assert.deepEqual(calls.tab, ['FORMLEE_PAGE', 'FORMLEE_FILL', 'FORMLEE_VERIFY'])
   assert.equal(calls.tools[0].tool, 'verify_filled_fields')
   assert.deepEqual(JSON.parse(JSON.stringify(calls.tools[0].args.results)), [{ index: 3, canonical: 'fullName', status: 'filled', valueHash: 'synthetic-sha256-Synthetic Student' }])
   assert.equal(calls.tools[0].args.pageFingerprint, 'synthetic-page-fingerprint')
@@ -278,7 +278,7 @@ test('synthetic readback failure releases the reservation and never retries the 
   const { result, calls } = await simulateReviewedFill({ readbackFails: true })
   assert.equal(result.ok, false)
   assert.equal(result.code, 'FIELD_VERIFICATION_FAILED')
-  assert.deepEqual(calls.tab, ['RANKORA_PAGE', 'RANKORA_FILL', 'RANKORA_VERIFY'])
+  assert.deepEqual(calls.tab, ['FORMLEE_PAGE', 'FORMLEE_FILL', 'FORMLEE_VERIFY'])
   assert.equal(calls.consumed, 0)
   assert.equal(calls.released, 1)
 })
@@ -312,8 +312,8 @@ test('registry does not contain tools for CAPTCHA, OTP, payment or final submiss
 })
 
 test('side panel explains manual-only operations', () => {
-  const sidepanel = read('extensions', 'rankora-apply-agent', 'sidepanel.js')
-  const html = read('extensions', 'rankora-apply-agent', 'sidepanel.html')
+  const sidepanel = read('extensions', 'formlee-apply-agent', 'sidepanel.js')
+  const html = read('extensions', 'formlee-apply-agent', 'sidepanel.html')
   assert.ok(sidepanel.includes('CAPTCHA'))
   assert.ok(sidepanel.includes('OTP'))
   assert.ok(sidepanel.includes('payment'))
@@ -326,7 +326,7 @@ test('side panel explains manual-only operations', () => {
 /* --------------------------------------------------------------------------- */
 
 test('credit boundary uses existing reserve/consume/release APIs', () => {
-  const credits = read('extensions', 'rankora-apply-agent', 'credits.js')
+  const credits = read('extensions', 'formlee-apply-agent', 'credits.js')
   assert.ok(credits.includes('/api/billing/reserve'))
   assert.ok(credits.includes("action === 'consume' ? 'consume' : 'release'"))
   assert.ok(credits.includes('idempotencyKey'))
@@ -343,7 +343,7 @@ test('credit is only reserved after explicit fill approval', () => {
 /* --------------------------------------------------------------------------- */
 
 test('side panel contains conversation, application, task, field review and activity surfaces', () => {
-  const html = read('extensions', 'rankora-apply-agent', 'sidepanel.html')
+  const html = read('extensions', 'formlee-apply-agent', 'sidepanel.html')
   assert.ok(html.includes('chat-section'))
   assert.ok(html.includes('task-section'))
   assert.ok(html.includes('plan-container'))
@@ -351,7 +351,7 @@ test('side panel contains conversation, application, task, field review and acti
 })
 
 test('pet state reflects genuine task status', () => {
-  const sidepanel = read('extensions', 'rankora-apply-agent', 'sidepanel.js')
+  const sidepanel = read('extensions', 'formlee-apply-agent', 'sidepanel.js')
   assert.ok(sidepanel.includes('taskStatusToPetState'))
   assert.ok(sidepanel.includes("case 'RUNNING':"))
   assert.ok(sidepanel.includes("case 'WAITING_FOR_STUDENT':"))

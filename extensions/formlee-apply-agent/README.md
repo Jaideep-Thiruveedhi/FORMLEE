@@ -50,8 +50,7 @@ payments, declarations or file uploads.
 2. Open `chrome://extensions` in Chrome (or `edge://extensions` in Edge).
 3. Enable **Developer mode** (top-right toggle).
 4. Click **Load unpacked** and select the folder
-   `extensions/rankora-apply-agent` (the folder containing `manifest.json`;
-   the folder keeps its original internal name).
+   `extensions/formlee-apply-agent` (the folder containing `manifest.json`).
 5. Pin the "Formlee Apply Agent" icon from the extensions (puzzle) menu.
 
 ## First run

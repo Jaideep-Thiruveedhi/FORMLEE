@@ -14,7 +14,7 @@ import type {
 } from './types'
 
 /**
- * Requirement evaluation for Formly.
+ * Requirement evaluation for Formlee.
  *
  * Readiness is computed ONLY from concrete, configured requirements — the
  * reused profile sections and the applicable document checklist. Pending Class
@@ -240,7 +240,7 @@ function evaluateCategory(payload: ProfileLike): SectionStatus {
       done: false,
       state: 'NEEDS_CONFIRMATION',
       missingLabels: ['Reservation category'],
-      note: 'Select your category yourself. Formly never infers it from your name, surname or location.',
+      note: 'Select your category yourself. Formlee never infers it from your name, surname or location.',
     }
   }
 
@@ -261,7 +261,7 @@ function evaluateCategory(payload: ProfileLike): SectionStatus {
       done: false,
       state: 'NEEDS_CONFIRMATION',
       missingLabels: missing,
-      note: 'Confirm your category (and PwD answer, if applicable) before Formly reuses it.',
+      note: 'Confirm your category (and PwD answer, if applicable) before Formlee reuses it.',
     }
   }
 
@@ -274,7 +274,7 @@ function evaluateCategory(payload: ProfileLike): SectionStatus {
     note:
       category === 'GENERAL'
         ? `${categoryLabel} confirmed. No category certificate applies.`
-        : `${categoryLabel} confirmed by you. A certificate is only needed where an examination requires it; Formly does not decide validity.`,
+        : `${categoryLabel} confirmed by you. A certificate is only needed where an examination requires it; Formlee does not decide validity.`,
   }
 }
 
@@ -344,7 +344,7 @@ export function evaluateProfile(payload: ProfileLike): ProfileEvaluation {
 /**
  * Whether a checklist row applies to this student right now. Conditional rows
  * appear only when the student's own confirmed answers make them potentially
- * relevant — Formly never decides which certificates an exam requires.
+ * relevant — Formlee never decides which certificates an exam requires.
  */
 export function isDocumentApplicable(docId: DocumentId, payload: ProfileLike): boolean {
   if (docId === 'CATEGORY_CERTIFICATE') {

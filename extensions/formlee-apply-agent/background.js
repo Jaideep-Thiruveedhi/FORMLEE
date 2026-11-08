@@ -5,7 +5,8 @@
  * chrome.storage.local (extension-private storage; page JavaScript can never
  * read it). The httpOnly Formlee workspace cookie never appears here: the
  * server issued the agent session during pairing, and every agent API call
- * carries the x-rankora-agent-session header.
+ * carries the x-formlee-agent-session header. The server still accepts the
+ * historical Rankora header for older installed extension builds.
  */
 
 importScripts('shared/formlee-config.js', 'shared/agent-core.js', 'shared/extension-policy.js', 'credits.js')
@@ -13,6 +14,7 @@ importScripts('shared/formlee-config.js', 'shared/agent-core.js', 'shared/extens
 const AgentCore = globalThis.AgentCore
 if (
   !AgentCore ||
+  globalThis.FormleeAgentCore !== AgentCore ||
   globalThis.RankoraAgentCore !== AgentCore ||
   typeof AgentCore.classifyUrl !== 'function' ||
   typeof AgentCore.isFillablePageKind !== 'function'
@@ -20,7 +22,7 @@ if (
   throw new Error('Formlee Apply Agent initialization failed: shared AgentCore is unavailable. Ensure shared/agent-core.js loads before background.js.')
 }
 
-const SESSION_HEADER = 'x-rankora-agent-session'
+const SESSION_HEADER = 'x-formlee-agent-session'
 
 const STORAGE_KEYS = {
   token: 'agentToken',
@@ -58,7 +60,7 @@ async function clearContentSessionState() {
   try {
     const tabs = await new Promise(resolve => chrome.tabs.query({}, result => resolve(Array.isArray(result) ? result : [])))
     await Promise.all(tabs.filter(tab => typeof tab.id === 'number').map(tab => new Promise(resolve => {
-      chrome.tabs.sendMessage(tab.id, { type: 'RANKORA_CLEAR_PRIVATE_STATE' }, () => {
+      chrome.tabs.sendMessage(tab.id, { type: 'FORMLEE_CLEAR_PRIVATE_STATE' }, () => {
         // Most tabs have no Formlee content script; the clear signal contains
         // no student data and a missing receiver is expected.
         void chrome.runtime.lastError
@@ -223,7 +225,7 @@ async function scanActiveTab() {
   const gate = gateTab(active.tab)
   if (!gate.ok) return gate
 
-  let response = await sendToTab(active.tab.id, { type: 'RANKORA_SCAN' })
+  let response = await sendToTab(active.tab.id, { type: 'FORMLEE_SCAN' })
   if (!response.ok && response.error === 'NO_CONTENT_SCRIPT') {
     try {
       await chrome.scripting.executeScript({
@@ -236,7 +238,7 @@ async function scanActiveTab() {
         error: 'Chrome refused script injection on this page. The agent only runs on normal http(s) web pages — chrome:// pages, the Chrome Web Store and PDF viewers are off limits.',
       }
     }
-    response = await sendToTab(active.tab.id, { type: 'RANKORA_SCAN' })
+    response = await sendToTab(active.tab.id, { type: 'FORMLEE_SCAN' })
   }
   if (!response.ok) return response
 
@@ -388,7 +390,7 @@ async function fetchDocumentsList() {
   return { ok: true, documents: data.documents || [] }
 }
 
-async function openFormlyTab(path) {
+async function openFormleeTab(path) {
   try {
     const baseUrl = await FormleeConfig.getBaseUrl()
     if (!baseUrl) return { ok: false, error: FormleeConfig.getConfigurationError() }
@@ -544,7 +546,7 @@ async function fillActiveTab(approved, approvalRef) {
   const validation = approvedAgainstPlan(approved, context.plan)
   if (!validation.ok) return validation
 
-  const pageResponse = await sendToTab(active.tab.id, { type: 'RANKORA_PAGE' })
+  const pageResponse = await sendToTab(active.tab.id, { type: 'FORMLEE_PAGE' })
   if (!pageResponse.ok || !pageResponse.page) {
     return { ok: false, error: pageResponse.error || 'The page could not be re-checked.', code: 'PAGE_CHECK_FAILED' }
   }
@@ -670,7 +672,7 @@ async function runVerifyOnTab(tab, payload) {
     return { ok: false, error: 'No approved fields to verify.', code: 'INVALID_ACTION' }
   }
 
-  const verifyResponse = await sendToTab(tab.id, { type: 'RANKORA_VERIFY', approved })
+  const verifyResponse = await sendToTab(tab.id, { type: 'FORMLEE_VERIFY', approved })
   if (!verifyResponse.ok) {
     return { ok: false, error: verifyResponse.error || 'Verification failed.', code: 'VERIFY_FAILED' }
   }
@@ -719,7 +721,7 @@ async function runFillFromAction(tab, payload) {
     return validation
   }
 
-  const pageResponse = await sendToTab(tab.id, { type: 'RANKORA_PAGE' })
+  const pageResponse = await sendToTab(tab.id, { type: 'FORMLEE_PAGE' })
   if (!pageResponse.ok || !pageResponse.page) {
     await Credits.releaseCredit({ reservationId: payload.reservationId, approvalRef: payload.approvalRef })
     return { ok: false, error: pageResponse.error || 'The page could not be re-checked.', code: 'PAGE_CHECK_FAILED' }
@@ -780,7 +782,7 @@ async function runFillFromAction(tab, payload) {
   }
 
   const fillResponse = await sendToTab(tab.id, {
-    type: 'RANKORA_FILL',
+    type: 'FORMLEE_FILL',
     fills,
     expectedFingerprint: context.fingerprint,
   })
@@ -793,7 +795,7 @@ async function runFillFromAction(tab, payload) {
   // Re-read the page after writes. The first response checks setter results;
   // this second pass confirms the controls still expose the approved values.
   const readbackResponse = await sendToTab(tab.id, {
-    type: 'RANKORA_VERIFY',
+    type: 'FORMLEE_VERIFY',
     approved: validation.approved,
   })
   const readbackPageChanged = typeof readbackResponse.fingerprint === 'string' &&
@@ -973,18 +975,18 @@ async function handleAgentMessage(message) {
     case 'DOCUMENTS_LIST':
       return fetchDocumentsList()
     case 'OPEN_PROFILE':
-      return openFormlyTab('/apply/profile')
+      return openFormleeTab('/apply/profile')
     case 'OPEN_HUB':
-      return openFormlyTab('/apply/applications')
+      return openFormleeTab('/apply/applications')
     case 'OPEN_APPLICATION': {
       const applicationId = String(message.applicationId || '')
       if (!applicationId) return { ok: false, error: 'Application id is required.' }
-      return openFormlyTab('/apply/applications/' + applicationId)
+      return openFormleeTab('/apply/applications/' + applicationId)
     }
     case 'SHOW_PET': {
       const active = await activeTab()
       if (!active.ok) return active
-      const response = await sendToTab(active.tab.id, { type: 'RANKORA_SHOW_PET' })
+      const response = await sendToTab(active.tab.id, { type: 'FORMLEE_SHOW_PET' })
       return response || { ok: true }
     }
     case 'CLEAR_PLAN':

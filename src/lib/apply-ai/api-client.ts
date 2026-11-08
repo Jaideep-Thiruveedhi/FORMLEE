@@ -52,7 +52,7 @@ export type WorkspaceStatus =
   | 'unavailable' // signed out: the cookie's workspace is claimed by some account
 
 /**
- * Creates/reads the Formly workspace. Must complete before profile or
+ * Creates/reads the Formlee workspace. Must complete before profile or
  * document queries run for signed-out visitors — and for signed-in users it
  * resolves (or mints) an account-owned workspace. The token value never
  * reaches client code. Re-runs automatically when the session identity

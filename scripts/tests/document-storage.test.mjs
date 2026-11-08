@@ -172,7 +172,7 @@ test('local development storage remains available without R2 credentials', async
   const root = await mkdtemp(path.join(tmpdir(), 'formlee-storage-test-'))
   const previous = {
     provider: process.env.DOCUMENT_STORAGE_PROVIDER,
-    storageRoot: process.env.RANKORA_STORAGE_DIR,
+    storageRoot: process.env.FORMLEE_STORAGE_DIR,
     nodeEnv: process.env.NODE_ENV,
     r2: Object.fromEntries(['R2_ACCOUNT_ID', 'R2_ACCESS_KEY_ID', 'R2_SECRET_ACCESS_KEY', 'R2_BUCKET_NAME']
       .map(name => [name, process.env[name]])),
@@ -180,8 +180,8 @@ test('local development storage remains available without R2 credentials', async
   t.after(async () => {
     if (previous.provider === undefined) delete process.env.DOCUMENT_STORAGE_PROVIDER
     else process.env.DOCUMENT_STORAGE_PROVIDER = previous.provider
-    if (previous.storageRoot === undefined) delete process.env.RANKORA_STORAGE_DIR
-    else process.env.RANKORA_STORAGE_DIR = previous.storageRoot
+    if (previous.storageRoot === undefined) delete process.env.FORMLEE_STORAGE_DIR
+    else process.env.FORMLEE_STORAGE_DIR = previous.storageRoot
     if (previous.nodeEnv === undefined) delete process.env.NODE_ENV
     else process.env.NODE_ENV = previous.nodeEnv
     for (const [name, value] of Object.entries(previous.r2)) {
@@ -193,7 +193,7 @@ test('local development storage remains available without R2 credentials', async
 
   process.env.NODE_ENV = 'development'
   process.env.DOCUMENT_STORAGE_PROVIDER = 'local'
-  process.env.RANKORA_STORAGE_DIR = root
+  process.env.FORMLEE_STORAGE_DIR = root
   delete process.env.R2_ACCOUNT_ID
   delete process.env.R2_ACCESS_KEY_ID
   delete process.env.R2_SECRET_ACCESS_KEY

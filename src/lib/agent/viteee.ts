@@ -4,7 +4,7 @@
  * Status: DOCUMENTATION_BACKED / DEMONSTRATION ONLY.
  *
  * This adapter is based on the publicly listed VITEEE 2027 application process
- * (https://viteee.vit.ac.in/) and the Formly Application Hub requirement list.
+ * (https://viteee.vit.ac.in/) and the Formlee Application Hub requirement list.
  * The actual VITEEE application portal is login-gated and was not inspected
  * live, so this adapter does NOT claim live-portal compatibility. It runs only
  * on the synthetic local demo fixture by default; official-domain matching is
@@ -15,7 +15,7 @@
  *  - VITEEE 2027 Information Brochure (public PDF)
  *
  * Mapped fields are limited to labels that appear consistently across VIT's
- * public application guidance and the Formly Student Information Vault.
+ * public application guidance and the Formlee Student Information Vault.
  */
 
 import type {
@@ -317,10 +317,10 @@ function classFromText(raw: string): 10 | 12 | 'both' | null {
 }
 
 const PERSONAL_MANUAL_REASONS: Record<string, string> = {
-  fathername: 'Parent/guardian details are stored in your Formly profile but are left for you to confirm on the portal.',
-  fatherguardianname: 'Parent/guardian details are stored in your Formly profile but are left for you to confirm on the portal.',
-  mothername: 'Parent/guardian details are stored in your Formly profile but are left for you to confirm on the portal.',
-  motherguardianname: 'Parent/guardian details are stored in your Formly profile but are left for you to confirm on the portal.',
+  fathername: 'Parent/guardian details are stored in your Formlee profile but are left for you to confirm on the portal.',
+  fatherguardianname: 'Parent/guardian details are stored in your Formlee profile but are left for you to confirm on the portal.',
+  mothername: 'Parent/guardian details are stored in your Formlee profile but are left for you to confirm on the portal.',
+  motherguardianname: 'Parent/guardian details are stored in your Formlee profile but are left for you to confirm on the portal.',
   guardianname: 'Guardian details are left for you to confirm on the portal.',
   addressline1: 'Address components are not autofilled; enter them yourself on the portal.',
   addressline2: 'Address components are not autofilled; enter them yourself on the portal.',
@@ -329,8 +329,8 @@ const PERSONAL_MANUAL_REASONS: Record<string, string> = {
   district: 'Address components are not autofilled; enter them yourself on the portal.',
   pincode: 'Address components are not autofilled; enter them yourself on the portal.',
   country: 'Address components are not autofilled; enter them yourself on the portal.',
-  alternatenumber: 'Alternate contact details are not stored in your Formly profile; fill them yourself.',
-  alternateemail: 'Alternate contact details are not stored in your Formly profile; fill them yourself.',
+  alternatenumber: 'Alternate contact details are not stored in your Formlee profile; fill them yourself.',
+  alternateemail: 'Alternate contact details are not stored in your Formlee profile; fill them yourself.',
 }
 
 function mapPersonal(descriptor: ViteeeFieldDescriptorLike): ViteeeMappingDecision {

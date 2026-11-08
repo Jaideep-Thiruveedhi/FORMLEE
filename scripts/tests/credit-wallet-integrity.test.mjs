@@ -13,8 +13,8 @@ const approval = read('src/lib/agent/approval.ts')
 const consumeRoute = read('src/app/api/billing/reserve/[id]/consume/route.ts')
 const recoveryRoute = read('src/app/api/billing/reserve/recover/route.ts')
 const approvalVerifyRoute = read('src/app/api/agent/approvals/verify/route.ts')
-const background = read('extensions/rankora-apply-agent/background.js')
-const extensionCredits = read('extensions/rankora-apply-agent/credits.js')
+const background = read('extensions/formlee-apply-agent/background.js')
+const extensionCredits = read('extensions/formlee-apply-agent/credits.js')
 const migration = read('prisma/migrations/20261103000006_credit_wallet_integrity/migration.sql')
 
 test('reservation identity and idempotency are separate Prisma fields', () => {
@@ -147,7 +147,7 @@ test('expired verification approvals transition to rejected and release only the
 
 test('extension persists reservation before browser writes and retains pending state until server confirmation', () => {
   const trackAt = background.indexOf('const storedReservation = await Credits.trackReservation')
-  const writeAt = background.indexOf("type: 'RANKORA_FILL'", trackAt)
+  const writeAt = background.indexOf("type: 'FORMLEE_FILL'", trackAt)
   assert.ok(trackAt >= 0 && writeAt > trackAt)
   assert.match(extensionCredits, /await storeReservation\(reservationId, approvalRef, 'pending'\)/)
   assert.match(extensionCredits, /if \(res\.ok\)[\s\S]*writePending\(pending\.filter/)
@@ -198,5 +198,5 @@ test('extension finalization retries reuse the approval reference without replay
   const body = JSON.parse(requests.at(-1).options.body)
   assert.deepEqual(body, { approvalRef: 'b'.repeat(64), pageFingerprint: 'fp' })
   assert.equal(memory.pendingCreditFinalizations.length, 0)
-  assert.equal(requests.some(item => item.url.includes('RANKORA_FILL')), false)
+  assert.equal(requests.some(item => item.url.includes('FORMLEE_FILL')), false)
 })

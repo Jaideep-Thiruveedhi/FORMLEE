@@ -751,7 +751,7 @@ export function buildReminders(
         examName: application.examName,
         kind: 'verification',
         title: `${application.examName} is waiting for manual verification`,
-        detail: 'A portal, payment or document step is still pending. Formly cannot complete or verify it for you.',
+        detail: 'A portal, payment or document step is still pending. Formlee cannot complete or verify it for you.',
         href,
         severity: 'info',
       })

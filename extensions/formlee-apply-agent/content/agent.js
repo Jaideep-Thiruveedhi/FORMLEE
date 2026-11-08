@@ -1,10 +1,10 @@
 /**
- * Formly Apply Agent V1 — content script.
+ * Formlee Apply Agent V1 — content script.
  *
  * Runs only when THIS extension injects it, and does exactly two things:
  *   SCAN — returns metadata of visible form controls (labels, kinds, required
  *          flags, option lists). It never reads a control's VALUE.
- *   FILL — writes values the Formly server resolved from the student's own
+ *   FILL — writes values the Formlee server resolved from the student's own
  *          profile into controls the student explicitly approved, dispatching
  *          input/change events, and reports per-field results.
  *
@@ -12,7 +12,7 @@
  * fields, and never acts without an explicit FILL message from the extension.
  */
 
-const AgentCore = typeof RankoraAgentCore !== 'undefined' ? RankoraAgentCore : null
+const AgentCore = globalThis.AgentCore || globalThis.FormleeAgentCore || globalThis.RankoraAgentCore || null
 
 const UNSAFE_PATTERNS = [
   /password/i,
@@ -558,7 +558,7 @@ function applyFill(fills, expectedFingerprint) {
   const fresh = scanPage()
   const page = fresh.page
   if (page.adapter === 'none') {
-    return { ok: false, error: 'This page is not an approved Formly target; nothing was filled.' }
+    return { ok: false, error: 'This page is not an approved Formlee target; nothing was filled.' }
   }
   if (!AgentCore.isFillablePageKind(page.kind)) {
     return { ok: false, error: AgentCore.pageNotice(page.adapter, page.kind) }
@@ -631,7 +631,7 @@ function verifyFields(approved) {
   const fresh = scanPage()
   const page = fresh.page
   if (page.adapter === 'none') {
-    return { ok: false, error: 'This page is not an approved Formly target; nothing was verified.' }
+    return { ok: false, error: 'This page is not an approved Formlee target; nothing was verified.' }
   }
 
   const results = []
@@ -652,20 +652,25 @@ function verifyFields(approved) {
 /* message endpoints (extension-only: pages cannot reach this)          */
 /* ------------------------------------------------------------------ */
 
-if (!window.__rankoraApplyAgentLoaded) {
+if (!window.__formleeApplyAgentLoaded && !window.__rankoraApplyAgentLoaded) {
+  // Mirror the historical flag so a newly updated script cannot register a
+  // second listener beside one left by an older injected content script.
+  window.__formleeApplyAgentLoaded = true
   window.__rankoraApplyAgentLoaded = true
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     if (!message || typeof message.type !== 'string') return
-    if (message.type === 'RANKORA_SCAN') {
+    // Accept the historical message names so an older worker can still talk
+    // to this content script while Chrome updates extension contexts.
+    if (message.type === 'FORMLEE_SCAN' || message.type === 'RANKORA_SCAN') {
       sendResponse(scanPage())
       return
     }
-    if (message.type === 'RANKORA_PAGE') {
+    if (message.type === 'FORMLEE_PAGE' || message.type === 'RANKORA_PAGE') {
       const fresh = scanPage()
       sendResponse({ ok: true, page: fresh.page })
       return
     }
-    if (message.type === 'RANKORA_FILL') {
+    if (message.type === 'FORMLEE_FILL' || message.type === 'RANKORA_FILL') {
       sendResponse(
         applyFill(
           Array.isArray(message.fills) ? message.fills : [],
@@ -674,7 +679,7 @@ if (!window.__rankoraApplyAgentLoaded) {
       )
       return
     }
-    if (message.type === 'RANKORA_VERIFY') {
+    if (message.type === 'FORMLEE_VERIFY' || message.type === 'RANKORA_VERIFY') {
       sendResponse(verifyFields(Array.isArray(message.approved) ? message.approved : []))
       return
     }

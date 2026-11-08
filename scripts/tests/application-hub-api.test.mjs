@@ -6,8 +6,8 @@ import assert from 'node:assert/strict'
  *
  * Run against an ISOLATED server/database, e.g.:
  *
- *   $env:DATABASE_URL='postgresql://postgres:postgres@localhost:5432/formly_hub_test?schema=public'
- *   $env:RANKORA_STORAGE_DIR='C:\Temp\formly-hub-test-storage'
+ *   $env:DATABASE_URL='postgresql://postgres:postgres@localhost:5432/formlee_hub_test?schema=public'
+ *   $env:FORMLEE_STORAGE_DIR='C:\Temp\formlee-hub-test-storage'
  *   npx next dev -p 3100
  *   $env:APPLICATION_HUB_TEST_BASE_URL='http://localhost:3100'
  *   node --test scripts/tests/application-hub-api.test.mjs

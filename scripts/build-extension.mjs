@@ -3,7 +3,7 @@ import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
-const SOURCE = path.join(ROOT, 'extensions', 'rankora-apply-agent')
+const SOURCE = path.join(ROOT, 'extensions', 'formlee-apply-agent')
 export const PRODUCTION_ORIGIN_PLACEHOLDER = 'https://replace-with-confirmed-formlee-origin.invalid'
 
 const PACKAGE_FILES = [
@@ -69,15 +69,15 @@ function renderConfigSource(source, mode, apiOrigin) {
 function renderAgentCoreSource(source, mode) {
   const needle = "const BUILD_MODE = 'development'"
   if (!source.includes(needle)) throw new Error('Agent core build-mode marker is missing.')
-  if (!/module\.exports\s*=\s*api/.test(source) || !/root\.AgentCore\s*=\s*api/.test(source) || !/root\.RankoraAgentCore\s*=\s*api/.test(source)) {
-    throw new Error('Agent core export contract is missing: CommonJS, AgentCore, and RankoraAgentCore exports are required.')
+  if (!/module\.exports\s*=\s*api/.test(source) || !/root\.AgentCore\s*=\s*api/.test(source) || !/root\.FormleeAgentCore\s*=\s*api/.test(source) || !/root\.RankoraAgentCore\s*=\s*api/.test(source)) {
+    throw new Error('Agent core export contract is missing: CommonJS, AgentCore, FormleeAgentCore, and the legacy RankoraAgentCore alias are required.')
   }
   return source.replace(needle, `const BUILD_MODE = ${JSON.stringify(mode)}`)
 }
 
 function validateBuiltAgentCore(coreSource, backgroundSource) {
-  if (!/module\.exports\s*=\s*api/.test(coreSource) || !/root\.AgentCore\s*=\s*api/.test(coreSource) || !/root\.RankoraAgentCore\s*=\s*api/.test(coreSource)) {
-    throw new Error('Built extension is missing a required shared AgentCore export.')
+  if (!/module\.exports\s*=\s*api/.test(coreSource) || !/root\.AgentCore\s*=\s*api/.test(coreSource) || !/root\.FormleeAgentCore\s*=\s*api/.test(coreSource) || !/root\.RankoraAgentCore\s*=\s*api/.test(coreSource)) {
+    throw new Error('Built extension is missing a required shared AgentCore export or compatibility alias.')
   }
   const importCall = backgroundSource.match(/importScripts\(([^)]*)\)/)
   const dependencies = importCall?.[1]?.match(/'[^']+'/g)?.map(value => value.slice(1, -1)) ?? []

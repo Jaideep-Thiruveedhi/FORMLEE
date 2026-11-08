@@ -19,7 +19,7 @@ import {
   sanitizePageUrl,
 } from '../../src/lib/agent/jee-main.ts'
 import { derivedDobParts, valueFromProfileRow } from '../../src/lib/agent/value-source.ts'
-import AgentCore from '../../extensions/rankora-apply-agent/shared/agent-core.js'
+import AgentCore from '../../extensions/formlee-apply-agent/shared/agent-core.js'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 const repoRoot = path.resolve(here, '../..')
@@ -518,7 +518,7 @@ test('post-fill verification checks the actual control state without exposing va
 /* --------------------------------------------------------------------------- */
 
 test('manifest keeps a minimal explicit host allowlist for every registered adapter', () => {
-  const manifest = JSON.parse(readRepo('extensions/rankora-apply-agent/manifest.json'))
+  const manifest = JSON.parse(readRepo('extensions/formlee-apply-agent/manifest.json'))
   assert.equal(manifest.manifest_version, 3)
   assert.equal(manifest.version, '1.2.0')
   assert.deepEqual([...manifest.permissions].sort(), ['activeTab', 'scripting', 'storage'])
@@ -556,15 +556,15 @@ test('a cancelled or cleared approval set cannot fill any field', () => {
 })
 
 test('the JEE integration does not add a second agent or claim official affiliation', () => {
-  const popup = readRepo('extensions/rankora-apply-agent/popup.html')
-  const content = readRepo('extensions/rankora-apply-agent/content/agent.js')
-  const background = readRepo('extensions/rankora-apply-agent/background.js')
+  const popup = readRepo('extensions/formlee-apply-agent/popup.html')
+  const content = readRepo('extensions/formlee-apply-agent/content/agent.js')
+  const background = readRepo('extensions/formlee-apply-agent/background.js')
   const page = readRepo('src/app/apply/agent/page.tsx')
-  const manifest = JSON.parse(readRepo('extensions/rankora-apply-agent/manifest.json'))
+  const manifest = JSON.parse(readRepo('extensions/formlee-apply-agent/manifest.json'))
 
   assert.match(popup, /id="adapter-banner"/)
   assert.match(popup, /documentation-backed/)
-  assert.match(content, /RANKORA_PAGE/)
+  assert.match(content, /FORMLEE_PAGE/)
   assert.match(content, /expectedFingerprint/)
   assert.match(content, /unverified/)
   assert.match(background, /importScripts\('shared\/agent-core\.js'[^)]*\)/)
@@ -626,7 +626,7 @@ test('private document guidance is advisory and checks only the published format
     }).status,
     'outside-guidance'
   )
-  assert.match(jeeUploadGuidance('PHOTO', null).message, /private Formly documents/i)
+  assert.match(jeeUploadGuidance('PHOTO', null).message, /private Formlee documents/i)
 })
 
 test('the strict JEE canonical allowlist never widens to state, address, parents or declarations', () => {

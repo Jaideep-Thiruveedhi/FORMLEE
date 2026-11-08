@@ -7,7 +7,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import { buildExtension, normalizeProductionOrigin, PRODUCTION_ORIGIN_PLACEHOLDER } from '../build-extension.mjs'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
-const EXT = path.join(ROOT, 'extensions', 'rankora-apply-agent')
+const EXT = path.join(ROOT, 'extensions', 'formlee-apply-agent')
 const readSource = (...parts) => readFile(path.join(EXT, ...parts), 'utf8')
 const { default: AgentCore } = await import(pathToFileURL(path.join(EXT, 'shared', 'agent-core.js')).href)
 const { default: ExtensionPolicy } = await import(pathToFileURL(path.join(EXT, 'shared', 'extension-policy.js')).href)

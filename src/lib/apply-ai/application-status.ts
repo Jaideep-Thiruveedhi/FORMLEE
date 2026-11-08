@@ -42,7 +42,7 @@ export const HUB_STATUS_DEFINITIONS: Record<HubApplicationStatus, HubStatusDefin
   FILLING_IN_PROGRESS: {
     label: 'Filling in progress',
     shortLabel: 'Filling',
-    description: 'You are entering details on the official portal. Formly has not submitted anything.',
+    description: 'You are entering details on the official portal. Formlee has not submitted anything.',
     className: 'bg-blue-50 text-blue-800 border-blue-200',
     submitted: false,
   },
@@ -63,14 +63,14 @@ export const HUB_STATUS_DEFINITIONS: Record<HubApplicationStatus, HubStatusDefin
   SUBMITTED_STUDENT_CONFIRMED: {
     label: 'Submitted — student confirmed',
     shortLabel: 'Student confirmed',
-    description: 'You explicitly confirmed that you submitted on the official portal. Formly has no independent proof of the submission.',
+    description: 'You explicitly confirmed that you submitted on the official portal. Formlee has no independent proof of the submission.',
     className: 'bg-emerald-50 text-emerald-800 border-emerald-200',
     submitted: true,
   },
   PORTAL_CONFIRMATION_RECORDED: {
     label: 'Portal acknowledgement recorded',
     shortLabel: 'Portal recorded',
-    description: 'You recorded a reference from the official portal. This is student-attested, not independently verified by Formly.',
+    description: 'You recorded a reference from the official portal. This is student-attested, not independently verified by Formlee.',
     className: 'bg-emerald-50 text-emerald-900 border-emerald-300',
     submitted: true,
   },

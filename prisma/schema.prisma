@@ -9,7 +9,7 @@ datasource db {
   directUrl = env("DIRECT_DATABASE_URL")
 }
 
-// Formly — student profile for a browser or account-owned workspace.
+// Formlee — student profile for a browser or account-owned workspace.
 // All document/profile values are user-entered and UNVERIFIED. No examination
 // rules are inferred from them. Scalars are nullable so partially-completed
 // drafts can be saved at any time.
@@ -292,7 +292,7 @@ model AgentPairingTicket {
 // and write also filters by workspaceId. Deadline fields snapshot the verified
 // catalog entry at creation/refresh time so a stale date is never presented as
 // current. Submission timestamps are explicit student records: portalReferenceAt
-// means the student recorded a portal acknowledgement, NOT that Formly verified
+// means the student recorded a portal acknowledgement, NOT that Formlee verified
 // the submission with the examination body.
 model ExamApplication {
   id                         String    @id @default(cuid())
@@ -637,7 +637,7 @@ model CreditPackage {
 
 model ReferralPartner {
   id                  String              @id @default(cuid())
-  userId              String?             @unique // linked Formly user, if any
+  userId              String?             @unique // linked Formlee user, if any
   user                User?               @relation(fields: [userId], references: [id], onDelete: SetNull)
   name                String
   email               String              @unique

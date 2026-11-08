@@ -200,7 +200,7 @@ export const PROFILE_SECTIONS: ProfileSectionDef[] = [
   {
     id: 'category',
     title: 'Category & certificates',
-    description: 'Select and confirm your category yourself. Formly never infers it from your name, surname or location.',
+    description: 'Select and confirm your category yourself. Formlee never infers it from your name, surname or location.',
     icon: '🏷️',
     fields: [
       {
@@ -210,10 +210,10 @@ export const PROFILE_SECTIONS: ProfileSectionDef[] = [
       {
         id: 'categoryOtherDetail', label: 'Other category (specify)', type: 'text', required: false,
         visibleWhen: { field: 'category', equals: ['OTHER'] },
-        help: 'Only if an examination explicitly supports this category. Formly does not decide eligibility.',
+        help: 'Only if an examination explicitly supports this category. Formlee does not decide eligibility.',
       },
       {
-        id: 'categoryConfirmed', label: 'I confirm this is my category and I want Formly to reuse it', type: 'boolean', required: false, wide: true,
+        id: 'categoryConfirmed', label: 'I confirm this is my category and I want Formlee to reuse it', type: 'boolean', required: false, wide: true,
         help: 'You remain responsible for the category and any certificate you claim on an official portal.',
       },
       {
@@ -247,7 +247,7 @@ export const PROFILE_SECTIONS: ProfileSectionDef[] = [
       {
         id: 'categoryCertificateValidUntil', label: 'Valid until (if the certificate states it)', type: 'date', required: false,
         visibleWhen: { field: 'category', equals: ['EWS', 'OBC_NCL', 'SC', 'ST', 'OTHER'] },
-        help: 'Formly does not invent or assume certificate validity rules. Copy the dates printed on your certificate.',
+        help: 'Formlee does not invent or assume certificate validity rules. Copy the dates printed on your certificate.',
       },
       {
         id: 'categoryCertificateFinancialYear', label: 'Financial year / validity period', type: 'text', required: false,
@@ -260,7 +260,7 @@ export const PROFILE_SECTIONS: ProfileSectionDef[] = [
           { value: 'SELF_REPORTED', label: 'Self-reported — not yet checked by me' },
           { value: 'STUDENT_CONFIRMED', label: 'I have checked the details against my certificate' },
         ],
-        help: 'This is your own confirmation, not legal verification by Formly or any examination body.',
+        help: 'This is your own confirmation, not legal verification by Formlee or any examination body.',
       },
       {
         id: 'categoryCertificateDocumentId', label: 'Linked certificate document', type: 'select', required: false,
@@ -281,7 +281,7 @@ export const PROFILE_SECTIONS: ProfileSectionDef[] = [
     icon: '⚙️',
     fields: [
       { id: 'homeState', label: 'Home state', type: 'select', required: false, options: STATE_OPTIONS, help: 'Used for state-linked preferences; check what each examination asks for.' },
-      { id: 'preferredExamCities', label: 'Preferred examination cities', type: 'cities', required: false, wide: true, help: 'Up to 6, comma-separated (e.g., Delhi, Patna, Hyderabad). Enter only cities you would accept — Formly will not choose for you.' },
+      { id: 'preferredExamCities', label: 'Preferred examination cities', type: 'cities', required: false, wide: true, help: 'Up to 6, comma-separated (e.g., Delhi, Patna, Hyderabad). Enter only cities you would accept — Formlee will not choose for you.' },
     ],
   },
 ]

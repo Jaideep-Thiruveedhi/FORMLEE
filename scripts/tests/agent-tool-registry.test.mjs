@@ -344,9 +344,9 @@ test('approval verify route binds the check to the agent session workspace', () 
 /* 10. Extension approval-before-fill wiring                                   */
 /* --------------------------------------------------------------------------- */
 
-const background = read('extensions', 'rankora-apply-agent', 'background.js')
-const sidepanel = read('extensions', 'rankora-apply-agent', 'sidepanel.js')
-const popup = read('extensions', 'rankora-apply-agent', 'popup.js')
+const background = read('extensions', 'formlee-apply-agent', 'background.js')
+const sidepanel = read('extensions', 'formlee-apply-agent', 'sidepanel.js')
+const popup = read('extensions', 'formlee-apply-agent', 'popup.js')
 
 test('background has a generic executeTool helper for the registry', () => {
   assert.ok(background.includes('async function executeTool(tool, args, studentAction)'))

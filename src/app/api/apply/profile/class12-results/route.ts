@@ -34,7 +34,7 @@ const resultSchema = z.object({
  * This updates the SAME StudentProfile row — it never creates a second
  * education profile. The previous pending/appearing state is preserved in
  * StudentProfileVersion history. Marks and percentage are optional: the
- * student must enter only what the official result actually states, and Formly
+ * student must enter only what the official result actually states, and Formlee
  * never computes or invents missing values.
  */
 export async function POST(request: NextRequest) {

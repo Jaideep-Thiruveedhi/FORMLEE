@@ -18,6 +18,14 @@ export interface AgentSessionRowLike {
   expiresAt: Date
 }
 
+export const AGENT_SESSION_HEADER = 'x-formlee-agent-session'
+const LEGACY_AGENT_SESSION_HEADER = 'x-rankora-agent-session'
+
+/** Prefer the current Formlee header while accepting existing extension builds. */
+export function readAgentSessionToken(headers: Pick<Headers, 'get'>): string {
+  return headers.get(AGENT_SESSION_HEADER) ?? headers.get(LEGACY_AGENT_SESSION_HEADER) ?? ''
+}
+
 export function isAgentTokenShape(token: unknown): token is string {
   return typeof token === 'string' && AGENT_TOKEN_PATTERN.test(token)
 }

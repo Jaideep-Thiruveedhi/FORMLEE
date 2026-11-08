@@ -1,5 +1,5 @@
 /**
- * Central examination-adapter registry for the Formly Apply Agent.
+ * Central examination-adapter registry for the Formlee Apply Agent.
  *
  * The registry owns two responsibilities:
  *

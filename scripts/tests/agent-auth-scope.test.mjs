@@ -18,9 +18,11 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 
 import {
+  AGENT_SESSION_HEADER,
   classifyAgentSession,
   isAgentSessionUsable,
   isAgentTokenShape,
+  readAgentSessionToken,
 } from '../../src/lib/agent/agent-session-policy.ts'
 import {
   FILL_CREDIT_BOUNDARY_ROUTES,
@@ -40,6 +42,16 @@ function functionSlice(source, functionName) {
   const end = source.indexOf('\nexport ', at + 1)
   return end === -1 ? source.slice(at) : source.slice(at, end)
 }
+
+test('Formlee agent-session header is canonical and accepts the historical extension header', () => {
+  assert.equal(AGENT_SESSION_HEADER, 'x-formlee-agent-session')
+  assert.equal(readAgentSessionToken(new Headers({
+    'x-formlee-agent-session': 'current-token',
+    'x-rankora-agent-session': 'legacy-token',
+  })), 'current-token')
+  assert.equal(readAgentSessionToken(new Headers({ 'x-rankora-agent-session': 'legacy-token' })), 'legacy-token')
+  assert.equal(readAgentSessionToken(new Headers()), '')
+})
 
 /* --------------------------------------------------------------------------- */
 /* 1. Agent session validity                                                    */

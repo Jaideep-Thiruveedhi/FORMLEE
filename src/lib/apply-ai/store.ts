@@ -45,7 +45,7 @@ export const useApplyStore = create<ApplyStoreState>()(
       consumeLegacyDraft: () => set({ legacyProfileDraft: undefined }),
     }),
     {
-      // Persisted key retained so existing local drafts survive the rebrand.
+      // Historical key retained so existing student drafts survive the rebrand.
       name: 'rankora-apply-ai-v1',
       version: 2,
       // v1 data carried the local profile/documents; profile values are kept as

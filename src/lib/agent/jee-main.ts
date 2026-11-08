@@ -159,7 +159,7 @@ interface JeeUploadRule {
 /**
  * Advisory checks against the documented file format/size limits. This is not
  * an official verification: it only tells the student whether a private file
- * stored in Formly appears to fit the published limits. Dimensions, photo
+ * stored in Formlee appears to fit the published limits. Dimensions, photo
  * recency, the live photograph and the portal's own validator remain manual.
  */
 export const JEE_MAIN_UPLOAD_RULES: readonly JeeUploadRule[] = [
@@ -227,7 +227,7 @@ export function jeeUploadGuidance(
   if (!document) {
     return {
       status: 'missing',
-      message: `No ${rule.label.toLowerCase()} in your private Formly documents. Upload one for your own checklist, then select it manually on the portal.`,
+      message: `No ${rule.label.toLowerCase()} in your private Formlee documents. Upload one for your own checklist, then select it manually on the portal.`,
     }
   }
   const formatOk = rule.mimeTypes.includes(document.mimeType as never)
@@ -521,16 +521,16 @@ const PERSONAL_MANUAL_REASONS: Record<string, string> = {
   confirmmobilenumber:
     'Confirmation fields are left for you — type or compare the saved mobile number yourself.',
   alternatecontactnooptional:
-    'Alternate contact details are not stored in your Formly profile; fill this yourself.',
+    'Alternate contact details are not stored in your Formlee profile; fill this yourself.',
   alternatecontactno:
-    'Alternate contact details are not stored in your Formly profile; fill this yourself.',
+    'Alternate contact details are not stored in your Formlee profile; fill this yourself.',
   alternatecontactnumber:
-    'Alternate contact details are not stored in your Formly profile; fill this yourself.',
-  nationality: 'Nationality is not stored in your Formly profile; fill this yourself.',
+    'Alternate contact details are not stored in your Formlee profile; fill this yourself.',
+  nationality: 'Nationality is not stored in your Formlee profile; fill this yourself.',
   fatherguardianname:
-    'Parent/guardian details are not stored in Formly; fill this yourself.',
+    'Parent/guardian details are not stored in Formlee; fill this yourself.',
   motherguardianname:
-    'Parent/guardian details are not stored in Formly; fill this yourself.',
+    'Parent/guardian details are not stored in Formlee; fill this yourself.',
   stateutfromwhere12thequivalentpassedappearing:
     'This is the State of Eligibility (where Class 12 was passed/appeared), not your home state. Fill it yourself.',
   stateofeligibility:
@@ -639,29 +639,29 @@ function classFromText(raw: string): 10 | 12 | 'both' | null {
 
 const QUALIFICATION_MANUAL_REASONS: Record<string, string> = {
   passstatus:
-    'Pass status is not stored in your Formly profile; select it yourself.',
+    'Pass status is not stored in your Formlee profile; select it yourself.',
   qualifyingexam:
-    'The qualifying-examination name is not stored in your Formly profile; select it yourself.',
+    'The qualifying-examination name is not stored in your Formlee profile; select it yourself.',
   qualifyingexamination:
-    'The qualifying-examination name is not stored in your Formly profile; select it yourself.',
+    'The qualifying-examination name is not stored in your Formlee profile; select it yourself.',
   nameofqualifyingexam:
-    'The qualifying-examination name is not stored in your Formly profile; select it yourself.',
+    'The qualifying-examination name is not stored in your Formlee profile; select it yourself.',
   placeofschool:
-    'Place of school is not stored in your Formly profile; select it yourself.',
+    'Place of school is not stored in your Formlee profile; select it yourself.',
   typeofschoolcollege:
-    'School/college type is not stored in your Formly profile; select it yourself.',
+    'School/college type is not stored in your Formlee profile; select it yourself.',
   qualifyingexaminationstate:
-    'Qualifying-examination state is not stored in your Formly profile; select it yourself.',
+    'Qualifying-examination state is not stored in your Formlee profile; select it yourself.',
   qualifyingexaminationdistrict:
-    'Qualifying-examination district is not stored in your Formly profile; select it yourself.',
+    'Qualifying-examination district is not stored in your Formlee profile; select it yourself.',
   resultmode:
     'Result mode (percentage, grade or result awaited) is not the same as the marks format in your profile; select it yourself.',
   schoolcollegenameaddress:
-    'School/college name and address are not stored in your Formly profile; fill them yourself.',
+    'School/college name and address are not stored in your Formlee profile; fill them yourself.',
   schoolcollegeaddress:
-    'School/college address is not stored in your Formly profile; fill it yourself.',
+    'School/college address is not stored in your Formlee profile; fill it yourself.',
   schoolcollegeaddresspincode:
-    'School/college address PIN code is not stored in your Formly profile; fill it yourself.',
+    'School/college address PIN code is not stored in your Formlee profile; fill it yourself.',
 }
 
 function mapQualification(descriptor: JeeFieldDescriptorLike): JeeMappingDecision {

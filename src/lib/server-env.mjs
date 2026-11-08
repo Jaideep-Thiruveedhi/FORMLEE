@@ -73,8 +73,8 @@ export function validateProductionEnvironment(env = process.env) {
     throw new Error('OPENROUTER_MODEL must be an explicit provider/model identifier in production.')
   }
 
-  if (storageProvider === 'local' && !env.RANKORA_STORAGE_DIR?.trim()) {
-    throw new Error('RANKORA_STORAGE_DIR must be explicitly set when production uses local document storage.')
+  if (storageProvider === 'local' && !env.FORMLEE_STORAGE_DIR?.trim()) {
+    throw new Error('FORMLEE_STORAGE_DIR must be explicitly set when production uses local document storage.')
   }
 
   if (storageProvider === 'r2') {

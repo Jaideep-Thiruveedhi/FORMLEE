@@ -3,9 +3,13 @@ import type { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import {
   type AgentSessionRowLike,
+  AGENT_SESSION_HEADER,
   isAgentSessionUsable,
   isAgentTokenShape,
+  readAgentSessionToken,
 } from './agent-session-policy'
+
+export { AGENT_SESSION_HEADER } from './agent-session-policy'
 
 /**
  * Apply Agent V1 — extension pairing & session management.
@@ -20,8 +24,6 @@ import {
  * extension JavaScript. Tickets are single-use and expire quickly; sessions
  * expire on their own and can be revoked by the student from the agent page.
  */
-
-export const AGENT_SESSION_HEADER = 'x-rankora-agent-session'
 
 const TICKET_TTL_MS = 15 * 60 * 1000
 const SESSION_TTL_MS = 30 * 60 * 1000
@@ -86,18 +88,18 @@ export function normalizePairingCode(input: unknown): string {
 export async function pairWithCode(rawCode: unknown): Promise<PairAttemptResult> {
   const code = normalizePairingCode(rawCode)
   if (code.length !== CODE_GROUPS * CODE_GROUP_LENGTH) {
-    return { ok: false, status: 400, code: 'PAIRING_CODE_INVALID', error: 'Enter the pairing code as shown on the Formly agent page.' }
+    return { ok: false, status: 400, code: 'PAIRING_CODE_INVALID', error: 'Enter the pairing code as shown on the Formlee agent page.' }
   }
 
   const ticket = await prisma.agentPairingTicket.findUnique({ where: { code } })
   if (!ticket) {
-    return { ok: false, status: 404, code: 'PAIRING_CODE_INVALID', error: 'This pairing code is not valid. Generate a fresh one on the Formly agent page.' }
+    return { ok: false, status: 404, code: 'PAIRING_CODE_INVALID', error: 'This pairing code is not valid. Generate a fresh one on the Formlee agent page.' }
   }
   if (ticket.usedAt) {
-    return { ok: false, status: 409, code: 'PAIRING_ALREADY_USED', error: 'This pairing code was already used. Generate a fresh one on the Formly agent page.' }
+    return { ok: false, status: 409, code: 'PAIRING_ALREADY_USED', error: 'This pairing code was already used. Generate a fresh one on the Formlee agent page.' }
   }
   if (ticket.expiresAt.getTime() <= Date.now()) {
-    return { ok: false, status: 410, code: 'PAIRING_EXPIRED', error: 'This pairing code expired. Generate a fresh one on the Formly agent page.' }
+    return { ok: false, status: 410, code: 'PAIRING_EXPIRED', error: 'This pairing code expired. Generate a fresh one on the Formlee agent page.' }
   }
 
   // Single-use enforcement is a conditional update: the first caller wins,
@@ -107,7 +109,7 @@ export async function pairWithCode(rawCode: unknown): Promise<PairAttemptResult>
     data: { usedAt: new Date() },
   })
   if (claimed.count !== 1) {
-    return { ok: false, status: 409, code: 'PAIRING_ALREADY_USED', error: 'This pairing code was already used. Generate a fresh one on the Formly agent page.' }
+    return { ok: false, status: 409, code: 'PAIRING_ALREADY_USED', error: 'This pairing code was already used. Generate a fresh one on the Formlee agent page.' }
   }
 
   const token = randomBytes(32).toString('hex')
@@ -127,7 +129,7 @@ export async function pairWithCode(rawCode: unknown): Promise<PairAttemptResult>
 export async function resolveAgentSessionFromHeaders(
   requestHeaders: Headers
 ): Promise<{ workspaceId: string; token: string } | null> {
-  const token = requestHeaders.get(AGENT_SESSION_HEADER) ?? ''
+  const token = readAgentSessionToken(requestHeaders)
   const session = await loadAgentSessionByToken(token)
   if (!session || !isAgentSessionUsable(session)) return null
   return { workspaceId: session.workspaceId, token: session.id }

@@ -12,9 +12,10 @@
 ;(function (root, factory) {
   const api = factory()
   if (typeof module === 'object' && module.exports) module.exports = api
-  // Keep the established name for content-script consumers and expose the
-  // short name used by the MV3 service worker and extension pages.
+  // Formlee is the canonical name. Keep the Rankora alias for extensions or
+  // already-injected content scripts that still expect the historical global.
   root.AgentCore = api
+  root.FormleeAgentCore = api
   root.RankoraAgentCore = api
 })(typeof globalThis !== 'undefined' ? globalThis : this, function () {
   'use strict'

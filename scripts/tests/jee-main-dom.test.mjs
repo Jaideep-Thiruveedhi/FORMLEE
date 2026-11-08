@@ -126,7 +126,7 @@ class CdpClient {
 async function launchChrome() {
   const chromePath = await findChrome()
   if (!chromePath) return null
-  const userDataDir = await mkdtemp(path.join(os.tmpdir(), 'formly-jee-chrome-'))
+  const userDataDir = await mkdtemp(path.join(os.tmpdir(), 'formlee-jee-chrome-'))
   const child = spawn(
     chromePath,
     [
@@ -223,22 +223,22 @@ async function runInPage() {
     }
 
     const injectAgent = async () => {
-      const core = await readFile('extensions/rankora-apply-agent/shared/agent-core.js', 'utf8')
-      const content = await readFile('extensions/rankora-apply-agent/content/agent.js', 'utf8')
+      const core = await readFile('extensions/formlee-apply-agent/shared/agent-core.js', 'utf8')
+      const content = await readFile('extensions/formlee-apply-agent/content/agent.js', 'utf8')
       await evaluate(core)
       const wrapped =
         '(() => {' +
         'const chrome = { runtime: { onMessage: { addListener() {} } } };' +
         content +
-        '\n;globalThis.__formlyTest = { scanPage, applyFill };' +
+        '\n;globalThis.__formleeTest = { scanPage, applyFill };' +
         '})()'
       await evaluate(wrapped)
     }
 
-    const scan = async () => evaluate('__formlyTest.scanPage()')
+    const scan = async () => evaluate('__formleeTest.scanPage()')
     const applyFill = async (fills, fingerprint) =>
       evaluate(
-        '__formlyTest.applyFill(' +
+        '__formleeTest.applyFill(' +
           JSON.stringify(fills) +
           ', ' +
           JSON.stringify(fingerprint) +

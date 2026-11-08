@@ -1,7 +1,7 @@
 /**
  * Formlee credit-authorization boundary.
  *
- * The extension never modifies balances. It asks the Formly backend to:
+ * The extension never modifies balances. It asks the Formlee backend to:
  *   1. Reserve one application credit when the student approves a fill.
  *   2. Consume the reservation after at least one approved field is verified filled.
  *   3. Release the reservation if the fill fails or is cancelled.
@@ -12,7 +12,7 @@
 const Credits = (function () {
   'use strict'
 
-  const SESSION_HEADER = 'x-rankora-agent-session'
+  const SESSION_HEADER = 'x-formlee-agent-session'
   const PENDING_KEY = 'pendingCreditFinalizations'
 
   function getBaseUrl() {
@@ -223,7 +223,7 @@ const Credits = (function () {
     if (balanceRes.balance < 1) {
       return {
         ok: false,
-        error: 'You do not have any application credits. Buy a credit package in Formly to continue.',
+        error: 'You do not have any application credits. Buy a credit package in Formlee to continue.',
         code: 'INSUFFICIENT_CREDITS',
       }
     }

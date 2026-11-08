@@ -1,5 +1,5 @@
 /**
- * Common adapter interface for the Formly Apply Agent.
+ * Common adapter interface for the Formlee Apply Agent.
  *
  * A single adapter encapsulates everything examination-specific: URL policy,
  * page classification, field mapping, document guidance and support status.

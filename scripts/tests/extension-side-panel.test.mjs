@@ -20,7 +20,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import path from 'node:path'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
-const EXT = path.join(ROOT, 'extensions', 'rankora-apply-agent')
+const EXT = path.join(ROOT, 'extensions', 'formlee-apply-agent')
 
 const read = (...parts) => readFileSync(path.join(EXT, ...parts), 'utf8')
 const manifest = JSON.parse(read('manifest.json'))
@@ -176,7 +176,7 @@ test('panel keeps the scan-scoped missing-profile flow (VALUES.missing), not a g
 
 test('panel implements no second agent or direct API access', () => {
   assert.ok(!sidepanel.includes('fetch('), 'the panel must never call APIs itself')
-  assert.ok(!sidepanel.includes('x-rankora-agent-session'), 'session token stays in the service worker')
+  assert.ok(!sidepanel.includes('x-formlee-agent-session'), 'session token stays in the service worker')
 })
 
 test('panel is the primary pet surface and hands back on unload', () => {
@@ -268,12 +268,20 @@ test('floating pet reuses the shared vocabulary and suppresses itself for the pa
   assert.ok(pet.includes('AgentUI ? AgentUI.PAGE_KIND_LABELS : PAGE_KIND_NAMES_FALLBACK'))
   assert.ok(pet.includes("panelSurface: 'floating'"))
   assert.ok(pet.includes("state.panelSurface === 'panel'"), 'suppression check present')
-  assert.ok(pet.includes("chrome.storage.local.set({ formleePetSurface: 'floating' })"),
+  assert.ok(pet.includes("chrome.storage.local.set({ [SURFACE_KEY]: 'floating' })"),
     'explicit SHOW_PET must clear the panel claim')
 })
 
+test('pet storage migrates existing Formly preferences into Formlee keys', () => {
+  assert.ok(pet.includes("const LEGACY_STORAGE_KEY = 'formlyPetState'"))
+  assert.ok(pet.includes("const LEGACY_SURFACE_KEY = 'formlyPetSurface'"))
+  assert.ok(pet.includes('chrome.storage.local.get([STORAGE_KEY, LEGACY_STORAGE_KEY]'))
+  assert.ok(pet.includes('chrome.storage.local.remove(LEGACY_STORAGE_KEY)'))
+  assert.ok(pet.includes('chrome.storage.local.remove(LEGACY_SURFACE_KEY)'))
+})
+
 test('floating pet keeps its runtime-show path for the transparent handover', () => {
-  assert.ok(pet.includes("message.type === 'RANKORA_SHOW_PET'"))
+  assert.ok(pet.includes("message.type === 'FORMLEE_SHOW_PET'"))
   assert.ok(pet.includes('updateHostVisibility'))
 })
 

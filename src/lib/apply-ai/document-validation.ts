@@ -3,7 +3,7 @@ import type { DocumentId, DocumentSpec, ReadinessIssue, UploadedDocumentDTO } fr
 /**
  * Lightweight document validation for the readiness checker.
  *
- * Only checks specifications that Formly has verified from an official source.
+ * Only checks specifications that Formlee has verified from an official source.
  * Where no spec is configured, the document is accepted as "uploaded" and the
  * student is still told to verify it on the official portal.
  */

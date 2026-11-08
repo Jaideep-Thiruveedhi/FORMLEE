@@ -16,7 +16,7 @@ import {
   mapViteeeField,
 } from '../../src/lib/agent/viteee.ts'
 import { classifyUrl, getAdapterById, listAdapters, mapFieldWithAdapter } from '../../src/lib/agent/registry.ts'
-import AgentCore from '../../extensions/rankora-apply-agent/shared/agent-core.js'
+import AgentCore from '../../extensions/formlee-apply-agent/shared/agent-core.js'
 
 function descriptor(label, kind = 'text', extra = {}) {
   return { label, kind, group: '', inputName: '', inputId: '', options: [], ...extra }

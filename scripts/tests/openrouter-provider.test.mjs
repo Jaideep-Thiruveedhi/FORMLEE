@@ -62,7 +62,7 @@ test('production configuration requires server-side OpenRouter values and valida
     NODE_ENV: 'production', DATABASE_URL: 'postgresql://a:b@db.example.invalid:5432/formlee?sslmode=require',
     DIRECT_DATABASE_URL: 'postgresql://a:b@db.example.invalid:5432/formlee?sslmode=require',
     BETTER_AUTH_SECRET: 'x'.repeat(48), BETTER_AUTH_URL: 'https://formlee.example.invalid',
-    DOCUMENT_STORAGE_PROVIDER: 'local', RANKORA_STORAGE_DIR: '/var/lib/formlee/uploads',
+    DOCUMENT_STORAGE_PROVIDER: 'local', FORMLEE_STORAGE_DIR: '/var/lib/formlee/uploads',
     AGENT_MODEL_PROVIDER: 'openrouter', OPENROUTER_API_KEY: 'test-key', OPENROUTER_MODEL: 'vendor/model',
   }
   assert.doesNotThrow(() => validateProductionEnvironment(base))

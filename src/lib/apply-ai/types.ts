@@ -209,7 +209,7 @@ export interface DocumentTypeDef {
 /* ---------------- Examination catalog (Application Hub) ---------------- */
 
 /**
- * Support status describes what Formly can do beyond listing the exam. It is
+ * Support status describes what Formlee can do beyond listing the exam. It is
  * deliberately separate from deadline state: an exam can have announced dates
  * while its form-filling support is still "Track only".
  */
@@ -265,12 +265,12 @@ export type ExamRequirementCategory =
   | 'VERIFICATION'
 
 export interface DocumentSpec {
-  /** Allowed MIME types, e.g. ['image/jpeg']. Null means not verified by Formly. */
+  /** Allowed MIME types, e.g. ['image/jpeg']. Null means not verified by Formlee. */
   mimeTypes?: string[]
   /** Size range in bytes. */
   minBytes?: number
   maxBytes?: number
-  /** Required image dimensions in pixels. Null means not verified by Formly. */
+  /** Required image dimensions in pixels. Null means not verified by Formlee. */
   minWidth?: number
   minHeight?: number
   maxWidth?: number
@@ -289,7 +289,7 @@ export interface ExamRequirementDefinition {
   sectionId?: ProfileSectionId
   /** For kind === 'document'. */
   documentType?: DocumentId
-  /** Verified file/size/dimension requirements, where Formly has a source. */
+  /** Verified file/size/dimension requirements, where Formlee has a source. */
   documentSpec?: DocumentSpec
   /** Conditional document rows are omitted when they do not apply to the student. */
   conditional?: 'PWD' | 'CATEGORY'
@@ -364,7 +364,7 @@ export interface ApplicationSubmission {
   studentConfirmedAt: string | null
   portalReferenceRecordedAt: string | null
   portalReference: string | null
-  /** Formly never independently verifies a submission with an examination body. */
+  /** Formlee never independently verifies a submission with an examination body. */
   portalVerification: PortalVerification
 }
 
@@ -464,7 +464,7 @@ export interface ReusableWorkspaceProgress {
 }
 
 export interface ApplicationEvaluation {
-  /** False when the official 2027 checklist has not been published; Formly does not invent one. */
+  /** False when the official 2027 checklist has not been published; Formlee does not invent one. */
   officialChecklistAvailable: boolean
   requirementsNote: string
   items: ApplicationRequirementItem[]

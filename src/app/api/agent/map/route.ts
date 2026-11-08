@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           error:
-            'The Apply Agent only runs on Formly demo pages and supported examination portals (' + adapterNames + ').',
+            'The Apply Agent only runs on Formlee demo pages and supported examination portals (' + adapterNames + ').',
           code: 'UNSUPPORTED_ORIGIN',
         },
         { status: 422 }

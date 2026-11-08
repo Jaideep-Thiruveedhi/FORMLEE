@@ -15,7 +15,7 @@ import path from 'node:path'
  */
 
 export function getStorageRoot(): string {
-  return process.env.RANKORA_STORAGE_DIR ?? path.join(process.cwd(), 'storage', 'uploads')
+  return process.env.FORMLEE_STORAGE_DIR ?? path.join(process.cwd(), 'storage', 'uploads')
 }
 
 const MIME_EXTENSIONS: Record<string, string> = {
@@ -92,7 +92,7 @@ export async function saveDocumentBytes(
 
 /** Resolves a stored filename to an absolute path strictly inside the root. */
 export function resolveStoredPath(workspaceId: string, storedName: string): string {
-  // The storage root is intentionally dynamic (RANKORA_STORAGE_DIR support);
+  // The storage root is intentionally dynamic (FORMLEE_STORAGE_DIR support);
   // opt out of Turbopack's whole-project tracing for this call.
   const root = path.resolve(/*turbopackIgnore: true*/ getStorageRoot())
   const abs = path.resolve(root, sanitizePathSegment(workspaceId), sanitizePathSegment(storedName))

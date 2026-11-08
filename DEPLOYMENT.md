@@ -27,7 +27,7 @@ Required before starting the production server. The production build itself does
 | `OPENROUTER_MODEL` | Explicit OpenRouter `provider/model` identifier. Avoid auto-routing to prevent unexpected model/cost selection. |
 | `AGENT_MODEL_PROVIDER` | Production must use `openrouter`; local development defaults to Ollama unless explicitly set to `openrouter`. |
 
-When `DOCUMENT_STORAGE_PROVIDER=local`, also set `RANKORA_STORAGE_DIR` to a private path on a host volume confirmed to persist across restarts and releases. Local filesystem storage is for development or a host with a deliberately configured durable volume; it is not a safe default for ephemeral instances.
+When `DOCUMENT_STORAGE_PROVIDER=local`, also set `FORMLEE_STORAGE_DIR` to a private path on a host volume confirmed to persist across restarts and releases. Local filesystem storage is for development or a host with a deliberately configured durable volume; it is not a safe default for ephemeral instances.
 
 When `DOCUMENT_STORAGE_PROVIDER=r2`, set server-only `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, and `R2_BUCKET_NAME`. The endpoint is constructed as `https://<R2_ACCOUNT_ID>.r2.cloudflarestorage.com`; the S3 client uses region `auto`. Credentials must only exist in the server runtime and host secret manager.
 

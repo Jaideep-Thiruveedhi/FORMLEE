@@ -4,12 +4,12 @@ import { getAuth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { Prisma } from '@prisma/client'
 
-// Internal cookie name retained for compatibility with existing workspaces.
-// It is never shown to students and is not part of the product identity.
+// Historical cookie name retained so existing anonymous workspaces keep
+// resolving to their original data. It is never shown to students.
 export const WORKSPACE_COOKIE = 'rankora_workspace'
 
 /**
- * Formly workspace ownership (Milestone 3).
+ * Formlee workspace ownership (Milestone 3).
  *
  * Two kinds of workspace coexist and are resolved ONLY in this module:
  *

@@ -4,6 +4,8 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
+      # Retain the existing local database name so developer volumes keep
+      # opening the same database; this does not name the Formlee product.
       POSTGRES_DB: rankora
     ports:
       - '127.0.0.1:5432:5432'

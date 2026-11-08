@@ -8,7 +8,7 @@ import { loadWorkspaceVaultWithDimensions } from '@/lib/apply-ai/server-data'
  * Redacted application readiness summary for the Formlee pet.
  *
  * Returns enough detail for the pet to explain what is missing, why it matters,
- * and which part of Formly to open next — without leaking document contents,
+ * and which part of Formlee to open next — without leaking document contents,
  * certificate numbers or field values.
  */
 export async function GET(request: Request) {

@@ -261,9 +261,9 @@ test('browser-result route validates action id and result shape', () => {
 /* 9. Side Panel integration                                                   */
 /* --------------------------------------------------------------------------- */
 
-const sidepanelHtml = read('extensions', 'rankora-apply-agent', 'sidepanel.html')
-const sidepanel = read('extensions', 'rankora-apply-agent', 'sidepanel.js')
-const background = read('extensions', 'rankora-apply-agent', 'background.js')
+const sidepanelHtml = read('extensions', 'formlee-apply-agent', 'sidepanel.html')
+const sidepanel = read('extensions', 'formlee-apply-agent', 'sidepanel.js')
+const background = read('extensions', 'formlee-apply-agent', 'background.js')
 
 test('side panel has a task orchestrator surface', () => {
   assert.ok(sidepanelHtml.includes('task-section'))

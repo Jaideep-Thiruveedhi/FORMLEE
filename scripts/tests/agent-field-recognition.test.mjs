@@ -315,7 +315,7 @@ test('conflict tool handler delegates to the conflict detector', () => {
 })
 
 test('side panel renders recognition source and confidence', () => {
-  const sidepanel = read('extensions', 'rankora-apply-agent', 'sidepanel.js')
+  const sidepanel = read('extensions', 'formlee-apply-agent', 'sidepanel.js')
   assert.ok(sidepanel.includes('sourceLabel'))
   assert.ok(sidepanel.includes('confidenceTone'))
   assert.ok(sidepanel.includes('sp-plan-warnings'))

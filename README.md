@@ -1,8 +1,8 @@
-# Formly
+# Formlee
 
 **Your exam applications, made easier.**
 
-Formly is an AI-assisted entrance-examination application-filling platform. Students create a reusable profile, organise their application documents, and use a browser extension with a review-before-fill agent to assist with supported examination application forms.
+Formlee is an AI-assisted examination application assistant. Students can organize a reusable profile and application documents, track supported exam applications, and use a browser extension that reviews field mappings before filling supported forms.
 
 The initial target audience is Indian students applying for examinations such as JEE Main, BITSAT, VITEEE, MET and CUET-UG. A rank or examination result is **never required** to create an account or complete a profile.
 
@@ -18,7 +18,7 @@ The initial target audience is Indian students applying for examinations such as
 - **JEE Main 2027 (Session 1) adapter — Beta** — documentation-backed detection and strict mapping for the official Personal Details and Qualification Details sections only. The live portal is login-gated and has not been inspected end to end.
 - **Demonstration forms** — the existing local synthetic form plus clearly labelled synthetic JEE Main fixtures for reproducible agent testing.
 
-The Apply Agent's generic workflow has been validated end to end against Formly's local demonstration form. The JEE Main adapter is backed by official NTA documentation but **has not been validated on the live portal**, so Formly makes no claim of complete or official compatibility.
+The Apply Agent's generic workflow has been validated end to end against Formlee's local demonstration form. The JEE Main adapter is backed by official NTA documentation but **has not been validated on the live portal**, so Formlee makes no claim of complete or official compatibility.
 
 ## Stack
 
@@ -43,7 +43,7 @@ The Apply Agent's generic workflow has been validated end to end against Formly'
    DATABASE_URL=postgresql://...
    BETTER_AUTH_SECRET=...
    BETTER_AUTH_URL=http://localhost:3000
-   # optional: RANKORA_STORAGE_DIR=/absolute/private/path
+   # optional: FORMLEE_STORAGE_DIR=/absolute/private/path
    # optional: OLLAMA_BASE_URL / OLLAMA_MODEL for the local mapping tier
    ```
 
@@ -69,9 +69,9 @@ The hub API tests are integration tests and require an isolated server and datab
 and remove their own anonymous workspaces; never point them at the development database.
 
 ```
-docker compose exec -T postgres psql -U postgres -d postgres -c "CREATE DATABASE formly_hub_test;"
-$env:DATABASE_URL='postgresql://postgres:postgres@localhost:5432/formly_hub_test?schema=public'
-$env:RANKORA_STORAGE_DIR='C:\Temp\formly-hub-test-storage'
+docker compose exec -T postgres psql -U postgres -d postgres -c "CREATE DATABASE formlee_hub_test;"
+$env:DATABASE_URL='postgresql://postgres:postgres@localhost:5432/formlee_hub_test?schema=public'
+$env:FORMLEE_STORAGE_DIR='C:\Temp\formlee-hub-test-storage'
 npx prisma db push
 npx next dev -p 3100
 ```
@@ -126,16 +126,16 @@ the older `/apply` readiness dashboard and from the legacy local "application st
 
 ## Browser extension
 
-The unpacked extension lives in `extensions/rankora-apply-agent/` (the folder name is an internal identifier and has not been renamed).
+The unpacked extension lives in `extensions/formlee-apply-agent/`.
 
 1. Open `chrome://extensions` and enable Developer mode.
-2. **Load unpacked** → select `extensions/rankora-apply-agent`.
+2. **Load unpacked** → select `extensions/formlee-apply-agent`.
 3. On `/apply/agent`, generate a 15-minute pairing code.
 4. Paste it into the extension popup. The session lasts 30 minutes and can be revoked from either side.
 5. Open `/apply/agent/demo-form` to try inspection, review and fill with the existing generic demo.
 6. For the JEE Main adapter, open `/apply/agent/jee-main-2027-demo` (Personal Details) or `/apply/agent/jee-main-2027-demo/qualification` (Qualification Details). These fixtures reuse documented labels but are synthetic and never submit.
 
-The extension declares only the local Formly origins and the exact official JEE Main 2027 application path (`https://examinationservices.nic.in/JeeMaink2027/*`). Lookalike domains and unrelated sites are rejected by the worker's origin gate. The extension stores only the short-lived agent session token in `chrome.storage.local`. The httpOnly workspace cookie never becomes extension-visible. The content script never submits a form and never touches password, OTP, CAPTCHA, payment, upload, declaration or final-submission controls.
+The extension declares only the local Formlee origins and the exact official JEE Main 2027 application path (`https://examinationservices.nic.in/JeeMaink2027/*`). Lookalike domains and unrelated sites are rejected by the worker's origin gate. The extension stores only the short-lived agent session token in `chrome.storage.local`. The httpOnly workspace cookie never becomes extension-visible. The content script never submits a form and never touches password, OTP, CAPTCHA, payment, upload, declaration or final-submission controls.
 
 ## Safety boundaries
 
@@ -159,4 +159,4 @@ storage/            private uploads (git-ignored)
 
 ## Status
 
-This is a development build. Authentication, profile, documents and the generic demonstration-form workflow are implemented and tested. The JEE Main 2027 adapter is **Beta**: its rules are documentation-backed, but the live application form is login-gated and has not been verified end to end. Do not present Formly as officially affiliated with NTA or as fully compatible with the live JEE Main portal until a supervised pilot has verified the real form without submitting a real application.
+This is a development build. Authentication, profile, documents and the generic demonstration-form workflow are implemented and tested. The JEE Main 2027 adapter is **Beta**: its rules are documentation-backed, but the live application form is login-gated and has not been verified end to end. Do not present Formlee as officially affiliated with NTA or as fully compatible with the live JEE Main portal until a supervised pilot has verified the real form without submitting a real application.

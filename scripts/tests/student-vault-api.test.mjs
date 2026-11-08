@@ -7,15 +7,15 @@ import { PrismaClient } from '@prisma/client'
  *
  * Run against an ISOLATED server + disposable database, e.g.:
  *
- *   $env:DATABASE_URL='postgresql://postgres:postgres@localhost:5432/formly_vault_test?schema=public'
- *   $env:RANKORA_STORAGE_DIR='C:\Temp\formly-vault-test-storage'
+ *   $env:DATABASE_URL='postgresql://postgres:postgres@localhost:5432/formlee_vault_test?schema=public'
+ *   $env:FORMLEE_STORAGE_DIR='C:\Temp\formlee-vault-test-storage'
  *   $env:BETTER_AUTH_URL='http://localhost:3101'
  *   npx next dev -p 3101
  *   $env:STUDENT_VAULT_TEST_BASE_URL='http://localhost:3101'
  *   node --test scripts/tests/student-vault-api.test.mjs
  *
  * Every test mints its own anonymous workspace. It never touches the
- * development workspace or the production `rankora` database.
+ * development workspace or any production database.
  */
 
 const BASE_URL = (
@@ -838,7 +838,7 @@ test('Student Information Vault API', { timeout: 600_000 }, async t => {
 
   await t.test('disposable database contains only synthetic test data', async () => {
     const databaseName = await prisma.$queryRaw`SELECT current_database() AS name`
-    assert.equal(databaseName[0].name, 'formly_vault_test', 'tests must never run on the real database')
+    assert.equal(databaseName[0].name, 'formlee_vault_test', 'tests must never run on the real database')
     const profiles = await prisma.studentProfile.count()
     assert.ok(profiles > 0)
   })

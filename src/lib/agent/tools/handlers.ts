@@ -568,7 +568,7 @@ export async function verifyFilledFields(_ctx: ToolContext, args: {
 
 function requestFromContext(_ctx: ToolContext): Request {
   return new Request('http://localhost/api/agent/internal', {
-    headers: { 'x-rankora-agent-session': _ctx.agentSessionId ?? '' },
+    headers: { 'x-formlee-agent-session': _ctx.agentSessionId ?? '' },
   })
 }
 

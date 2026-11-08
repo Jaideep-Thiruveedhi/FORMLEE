@@ -9,11 +9,11 @@ import type {
 } from './types'
 
 /**
- * Examination catalog for Formly's Application Hub.
+ * Examination catalog for Formlee's Application Hub.
  *
  * Two different kinds of information live here and must never be conflated:
  *
- *  1. Identity/support metadata — what an exam is, whether Formly has an agent
+ *  1. Identity/support metadata — what an exam is, whether Formlee has an agent
  *     adapter, and what the student can do in the hub.
  *  2. Official application facts — sessions and deadlines, each carrying the
  *     official URL and the date it was verified. When no current official date
@@ -105,7 +105,7 @@ const JEE_REQUIREMENTS: ExamRequirementDefinition[] = [
     kind: 'profile-section',
     category: 'PROFILE',
     label: 'Parent / guardian information',
-    detail: 'Father/guardian and mother/guardian names and contact details, where the form asks for them. Formly never invents family details.',
+    detail: 'Father/guardian and mother/guardian names and contact details, where the form asks for them. Formlee never invents family details.',
     sectionId: 'family',
     source: JEE_BULLETIN_SOURCE,
   },
@@ -123,7 +123,7 @@ const JEE_REQUIREMENTS: ExamRequirementDefinition[] = [
     kind: 'profile-section',
     category: 'PROFILE',
     label: 'Category & certificate confirmation',
-    detail: 'Your explicitly selected and confirmed category. Formly never infers category from name, surname or location, and never claims a certificate is legally valid.',
+    detail: 'Your explicitly selected and confirmed category. Formlee never infers category from name, surname or location, and never claims a certificate is legally valid.',
     sectionId: 'category',
     source: JEE_BULLETIN_SOURCE,
   },
@@ -141,7 +141,7 @@ const JEE_REQUIREMENTS: ExamRequirementDefinition[] = [
     kind: 'profile-section',
     category: 'EDUCATION',
     label: 'Class 12 / qualifying examination details',
-    detail: 'Board, passing year, roll number, subjects and marks as printed on your records. Formly never decides your eligibility.',
+    detail: 'Board, passing year, roll number, subjects and marks as printed on your records. Formlee never decides your eligibility.',
     sectionId: 'class12',
     source: JEE_BULLETIN_SOURCE,
   },
@@ -150,7 +150,7 @@ const JEE_REQUIREMENTS: ExamRequirementDefinition[] = [
     kind: 'profile-section',
     category: 'PREFERENCES',
     label: 'Paper and examination-city preferences',
-    detail: 'Your preferred paper(s) and cities. Availability and final allotment are decided by NTA, not by Formly.',
+    detail: 'Your preferred paper(s) and cities. Availability and final allotment are decided by NTA, not by Formlee.',
     sectionId: 'preferences',
     source: JEE_BULLETIN_SOURCE,
   },
@@ -224,9 +224,9 @@ const JEE_REQUIREMENTS: ExamRequirementDefinition[] = [
     kind: 'manual',
     category: 'VERIFICATION',
     label: 'Review the official preview before final submission',
-    detail: 'Formly never submits. Check every field and the declaration on NTA’s confirmation page yourself.',
+    detail: 'Formlee never submits. Check every field and the declaration on NTA’s confirmation page yourself.',
     manualInstruction:
-      'I have reviewed my entries and the declaration on the official JEE (Main) portal. This is my own check, not a Formly verification.',
+      'I have reviewed my entries and the declaration on the official JEE (Main) portal. This is my own check, not a Formlee verification.',
     source: JEE_APPLICATION_SOURCE,
   },
 ]
@@ -300,7 +300,7 @@ const VITEEE_REQUIREMENTS: ExamRequirementDefinition[] = [
     kind: 'manual',
     category: 'VERIFICATION',
     label: 'Complete the portal’s photo capture / face registration',
-    detail: 'This step happens on the official VITEEE portal and cannot be completed inside Formly.',
+    detail: 'This step happens on the official VITEEE portal and cannot be completed inside Formlee.',
     manualInstruction:
       'I have completed the live photo capture / face registration step on the official VITEEE portal.',
     source: VIT_SOURCE,
@@ -409,7 +409,7 @@ export const EXAMS: ExamDefinition[] = [
     ],
     requirementsPublished: false,
     requirementsNote:
-      'The official BITSAT 2027 information bulletin has not been published. Formly will not turn the 2026 bulletin into a 2027 checklist; use your reusable profile and document workspace until the official requirements are available.',
+      'The official BITSAT 2027 information bulletin has not been published. Formlee will not turn the 2026 bulletin into a 2027 checklist; use your reusable profile and document workspace until the official requirements are available.',
     requirements: [],
     preferenceFields: [
       {
@@ -507,7 +507,7 @@ export const EXAMS: ExamDefinition[] = [
     ],
     requirementsPublished: false,
     requirementsNote:
-      'A current official MET 2027 requirement list is not available on the verified MAHE page. Formly will not invent one; keep your reusable profile and documents ready and verify the form instructions when published.',
+      'A current official MET 2027 requirement list is not available on the verified MAHE page. Formlee will not invent one; keep your reusable profile and documents ready and verify the form instructions when published.',
     requirements: [],
     preferenceFields: [
       {
@@ -532,7 +532,7 @@ export const EXAMS: ExamDefinition[] = [
     officialWebsite: 'https://cuet.nta.nic.in/',
     supportStatus: 'DATES_NOT_ANNOUNCED',
     supportNote:
-      'Catalog and application tracking only. NTA has not published the CUET-UG 2027 information bulletin; Formly does not reuse 2026 dates or requirements.',
+      'Catalog and application tracking only. NTA has not published the CUET-UG 2027 information bulletin; Formlee does not reuse 2026 dates or requirements.',
     applicationSessions: [
       {
         id: 'cuet-ug-2027',
@@ -548,7 +548,7 @@ export const EXAMS: ExamDefinition[] = [
     ],
     requirementsPublished: false,
     requirementsNote:
-      'The CUET-UG 2027 information bulletin has not been published. Formly will not reuse the 2026 bulletin as a current requirement list.',
+      'The CUET-UG 2027 information bulletin has not been published. Formlee will not reuse the 2026 bulletin as a current requirement list.',
     requirements: [],
     preferenceFields: [
       {
@@ -595,7 +595,7 @@ export const SUPPORT_STATUS_DEFINITIONS: Record<
   },
   TRACK_ONLY: {
     label: 'Track only',
-    description: 'Track deadlines, requirements and status in Formly; fill the form on the official portal yourself.',
+    description: 'Track deadlines, requirements and status in Formlee; fill the form on the official portal yourself.',
   },
   APPLICATION_CLOSED: {
     label: 'Application closed',
@@ -615,4 +615,4 @@ export const DEADLINE_STATE_LABELS = {
 
 /** Shown on every exam surface — dates are never inferred or reused from old cycles. */
 export const OFFICIAL_SOURCE_NOTE =
-  'Formly shows a date only beside its official source and the date it was last checked. Deadlines, fees, eligibility rules and document specifications must always be confirmed on the official portal. Checklist completion never proves eligibility.'
+  'Formlee shows a date only beside its official source and the date it was last checked. Deadlines, fees, eligibility rules and document specifications must always be confirmed on the official portal. Checklist completion never proves eligibility.'

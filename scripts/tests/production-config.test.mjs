@@ -33,7 +33,7 @@ function validProduction(overrides = {}) {
     AGENT_MODEL_PROVIDER: 'openrouter',
     OPENROUTER_API_KEY: 'test-provider-key',
     OPENROUTER_MODEL: 'example/test-model',
-    RANKORA_STORAGE_DIR: '/var/lib/formlee/uploads',
+    FORMLEE_STORAGE_DIR: '/var/lib/formlee/uploads',
     ...overrides,
   }
 }
@@ -58,6 +58,8 @@ test('environment example documents required production settings with placeholde
     'R2_SECRET_ACCESS_KEY',
     'R2_BUCKET_NAME',
   ]
+  assert.match(environmentExample, /FORMLEE_STORAGE_DIR=\/var\/lib\/formlee\/uploads/)
+  assert.doesNotMatch(environmentExample, /RANKORA_STORAGE_DIR/)
   for (const name of required) assert.ok(values.has(name), 'example is missing a required production variable')
 
   for (const name of [
@@ -117,7 +119,7 @@ test('valid remote TLS production configuration is accepted', () => {
 test('production database URLs cannot silently target local development databases', () => {
   assert.throws(
     () => validateProductionEnvironment(validProduction({
-      DATABASE_URL: 'postgresql://app:secret@localhost:5432/rankora?sslmode=require',
+      DATABASE_URL: 'postgresql://app:secret@localhost:5432/formlee?sslmode=require',
     })),
     /DATABASE_URL must point to the configured remote production database/
   )
@@ -130,9 +132,17 @@ test('production auth requires a long secret and an HTTPS public origin', () => 
 
 test('local document storage must be explicit and configured with a storage path', () => {
   assert.throws(
-    () => validateProductionEnvironment(validProduction({ RANKORA_STORAGE_DIR: '' })),
-    /RANKORA_STORAGE_DIR must be explicitly set/
+    () => validateProductionEnvironment(validProduction({ FORMLEE_STORAGE_DIR: '' })),
+    /FORMLEE_STORAGE_DIR must be explicitly set/
   )
+})
+
+test('local storage configuration uses only the Formlee environment variable name', () => {
+  const source = readFileSync(resolve('src/lib/apply-ai/storage.ts'), 'utf8')
+  const validator = readFileSync(resolve('src/lib/server-env.mjs'), 'utf8')
+  assert.match(source, /process\.env\.FORMLEE_STORAGE_DIR/)
+  assert.match(validator, /env\.FORMLEE_STORAGE_DIR/)
+  assert.doesNotMatch(source + validator, /RANKORA_STORAGE_DIR/)
 })
 
 test('R2 configuration requires its complete server-only credential set', () => {

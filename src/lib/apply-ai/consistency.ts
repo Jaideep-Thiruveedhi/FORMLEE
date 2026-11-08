@@ -2,7 +2,7 @@ import type { ConsistencyIssue, StudentProfileData } from './types'
 
 /**
  * Detects differences between the canonical vault and an application's saved
- * snapshot or preferences. Formly never silently rewrites either side; it
+ * snapshot or preferences. Formlee never silently rewrites either side; it
  * surfaces the mismatch and lets the student choose where to correct it.
  */
 

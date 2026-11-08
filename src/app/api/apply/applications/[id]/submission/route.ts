@@ -27,7 +27,7 @@ async function workspaceData(workspaceId: string) {
  *
  *  - CONFIRM_STUDENT_SUBMITTED: the student confirms they submitted on the portal.
  *  - RECORD_PORTAL_CONFIRMATION: the student records a portal acknowledgement
- *    reference. Formly still does not verify it with the examination body.
+ *    reference. Formlee still does not verify it with the examination body.
  *  - CLEAR: removes a mistaken submission record and returns to review.
  */
 export async function POST(

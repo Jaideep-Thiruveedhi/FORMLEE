@@ -16,9 +16,9 @@ import {
  * controlled 404 instead of an unhandled read-stream failure.
  */
 test('storedFileExists distinguishes present from missing private files', async () => {
-  const previousRoot = process.env.RANKORA_STORAGE_DIR
-  const root = await mkdtemp(path.join(os.tmpdir(), 'formly-storage-test-'))
-  process.env.RANKORA_STORAGE_DIR = root
+  const previousRoot = process.env.FORMLEE_STORAGE_DIR
+  const root = await mkdtemp(path.join(os.tmpdir(), 'formlee-storage-test-'))
+  process.env.FORMLEE_STORAGE_DIR = root
   const workspaceId = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
 
   try {
@@ -34,8 +34,8 @@ test('storedFileExists distinguishes present from missing private files', async 
     await rm(resolveStoredPath(workspaceId, storedName))
     assert.equal(await storedFileExists(workspaceId, storedName), false)
   } finally {
-    if (previousRoot === undefined) delete process.env.RANKORA_STORAGE_DIR
-    else process.env.RANKORA_STORAGE_DIR = previousRoot
+    if (previousRoot === undefined) delete process.env.FORMLEE_STORAGE_DIR
+    else process.env.FORMLEE_STORAGE_DIR = previousRoot
     await rm(root, { recursive: true, force: true })
   }
 })

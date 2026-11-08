@@ -35,7 +35,7 @@ test('model adapter supports native Ollama tool calling and prompt-based fallbac
 test('model adapter never includes sensitive data in prompts', () => {
   assert.ok(model.includes('Privacy contract'))
   assert.ok(model.includes('Never ask for or expose'))
-  assert.ok(!model.includes('x-rankora-agent-session'))
+  assert.ok(!model.includes('x-formlee-agent-session'))
 })
 
 test('model adapter validates and parses tool calls', () => {
@@ -98,8 +98,8 @@ test('chat endpoint runs the unified agent message handler', () => {
 /* 4. Browser-action dispatch in extension                                     */
 /* --------------------------------------------------------------------------- */
 
-const background = read('extensions', 'rankora-apply-agent', 'background.js')
-const contentAgent = read('extensions', 'rankora-apply-agent', 'content', 'agent.js')
+const background = read('extensions', 'formlee-apply-agent', 'background.js')
+const contentAgent = read('extensions', 'formlee-apply-agent', 'content', 'agent.js')
 
 test('background accepts only explicitly supported browser-action types', () => {
   assert.ok(background.includes('ALLOWED_BROWSER_ACTIONS'))
@@ -138,7 +138,7 @@ test('background fill from action consumes or releases credit by reservation id'
 })
 
 test('content script implements VERIFY readback', () => {
-  assert.ok(contentAgent.includes("message.type === 'RANKORA_VERIFY'"))
+  assert.ok(contentAgent.includes("message.type === 'FORMLEE_VERIFY'"))
   assert.ok(contentAgent.includes('verifyFields('))
   assert.ok(contentAgent.includes('readEntryValue'))
 })
@@ -153,8 +153,8 @@ test('content script never executes arbitrary JavaScript from messages', () => {
 /* 5. Side Panel chat integration                                              */
 /* --------------------------------------------------------------------------- */
 
-const sidepanelHtml = read('extensions', 'rankora-apply-agent', 'sidepanel.html')
-const sidepanel = read('extensions', 'rankora-apply-agent', 'sidepanel.js')
+const sidepanelHtml = read('extensions', 'formlee-apply-agent', 'sidepanel.html')
+const sidepanel = read('extensions', 'formlee-apply-agent', 'sidepanel.js')
 
 test('side panel has a chat input surface', () => {
   assert.ok(sidepanelHtml.includes('chat-messages'))

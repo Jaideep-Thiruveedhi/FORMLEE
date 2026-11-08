@@ -1,5 +1,5 @@
 /**
- * Formlee — floating AI pet assistant (Manifest V3 content script).
+ * Formlee Pet — floating student assistant (Manifest V3 content script).
  *
  * Runs only on the explicitly matched examination pages defined in
  * manifest.json. It is a pure UI layer: scan/fill/value logic stays in the
@@ -10,12 +10,15 @@
 ;(function () {
   'use strict'
 
-  const AgentCore = typeof RankoraAgentCore !== 'undefined' ? RankoraAgentCore : null
+  const AgentCore = globalThis.AgentCore || globalThis.FormleeAgentCore || globalThis.RankoraAgentCore || null
   // Shared UI vocabulary — the panel and popup use the same table, so the
   // floating pet never describes a field differently from the side panel.
   const AgentUI = typeof FormleeAgentUI !== 'undefined' ? FormleeAgentUI : null
 
-  const STORAGE_KEY = 'formlyPetState'
+  const STORAGE_KEY = 'formleePetState'
+  const LEGACY_STORAGE_KEY = 'formlyPetState'
+  const SURFACE_KEY = 'formleePetSurface'
+  const LEGACY_SURFACE_KEY = 'formlyPetSurface'
   const MENU_ITEMS = [
     { id: 'scan', label: 'Scan this form' },
     { id: 'fill', label: 'Fill application' },
@@ -153,17 +156,25 @@
         resolve({})
         return
       }
-      chrome.storage.local.get(STORAGE_KEY, result => {
-        resolve(result[STORAGE_KEY] || {})
+      chrome.storage.local.get([STORAGE_KEY, LEGACY_STORAGE_KEY], result => {
+        const saved = result[STORAGE_KEY] ?? result[LEGACY_STORAGE_KEY]
+        if (saved && !result[STORAGE_KEY]) {
+          chrome.storage.local.set({ [STORAGE_KEY]: saved }, () => {
+            chrome.storage.local.remove(LEGACY_STORAGE_KEY)
+          })
+        }
+        resolve(saved || {})
       })
     })
   }
 
   function writeStorage(patch) {
     if (typeof chrome === 'undefined' || !chrome || !chrome.storage || !chrome.storage.local) return
-    chrome.storage.local.get(STORAGE_KEY, result => {
-      const next = { ...(result[STORAGE_KEY] || {}), ...patch }
-      chrome.storage.local.set({ [STORAGE_KEY]: next })
+    chrome.storage.local.get([STORAGE_KEY, LEGACY_STORAGE_KEY], result => {
+      const next = { ...(result[STORAGE_KEY] || result[LEGACY_STORAGE_KEY] || {}), ...patch }
+      chrome.storage.local.set({ [STORAGE_KEY]: next }, () => {
+        chrome.storage.local.remove(LEGACY_STORAGE_KEY)
+      })
     })
   }
 
@@ -234,7 +245,7 @@
     return `
       :host { all: initial; }
       * { box-sizing: border-box; }
-      #formly-pet-wrapper {
+      #formlee-pet-wrapper {
         position: fixed;
         right: 0; bottom: 0;
         width: 0; height: 0;
@@ -252,7 +263,7 @@
         --fp-muted: #6b7280;
         --fp-shadow: 0 20px 50px rgba(0,0,0,0.15);
       }
-      #formly-pet {
+      #formlee-pet {
         position: absolute;
         right: 0; bottom: 0;
         width: 64px; height: 64px;
@@ -265,10 +276,10 @@
         transition: transform .2s ease, box-shadow .2s ease, opacity .2s ease, filter .2s ease;
         pointer-events: auto;
       }
-      #formly-pet:hover { transform: scale(1.05); box-shadow: 0 14px 34px rgba(79,70,229,0.42); }
-      #formly-pet:active { transform: scale(0.97); }
-      #formly-pet.minimized { transform: scale(0.5); }
-      #formly-pet.minimized:hover { transform: scale(0.58); }
+      #formlee-pet:hover { transform: scale(1.05); box-shadow: 0 14px 34px rgba(79,70,229,0.42); }
+      #formlee-pet:active { transform: scale(0.97); }
+      #formlee-pet.minimized { transform: scale(0.5); }
+      #formlee-pet.minimized:hover { transform: scale(0.58); }
 
       .pet-face { width: 44px; height: 44px; overflow: visible; }
       .pet-body { }
@@ -324,7 +335,7 @@
       .pet-badge.visible { display: block; }
 
       /* panel */
-      #formly-pet-panel {
+      #formlee-pet-panel {
         position: absolute;
         right: 0; bottom: 76px;
         width: 360px; max-width: calc(100vw - 32px);
@@ -336,8 +347,8 @@
         display: none; flex-direction: column;
         overflow: hidden;
       }
-      #formly-pet-panel.open { display: flex; }
-      #formly-pet-panel.panel-left { right: auto; left: 0; }
+      #formlee-pet-panel.open { display: flex; }
+      #formlee-pet-panel.panel-left { right: auto; left: 0; }
 
       .panel-header {
         padding: 14px 16px; border-bottom: 1px solid var(--fp-border);
@@ -456,7 +467,7 @@
       .doc-current { font-size: 10px; font-weight: 700; color: #16a34a; background: #dcfce7; padding: 1px 5px; border-radius: 999px; margin-left: 6px; }
 
       /* context menu */
-      #formly-pet-menu {
+      #formlee-pet-menu {
         position: absolute;
         right: 0; bottom: 76px;
         width: 220px; max-width: calc(100vw - 32px);
@@ -467,7 +478,7 @@
         display: none; flex-direction: column;
         padding: 6px;
       }
-      #formly-pet-menu.open { display: flex; }
+      #formlee-pet-menu.open { display: flex; }
       .menu-item {
         padding: 8px 12px; border-radius: 8px; cursor: pointer;
         font-size: 13px; color: #111827; background: transparent; border: none; text-align: left;
@@ -486,8 +497,8 @@
 
   function buildMarkup() {
     return `
-      <div id="formly-pet-wrapper" aria-live="polite" aria-atomic="true">
-        <div id="formly-pet" role="button" tabindex="0" aria-label="Formlee assistant" aria-haspopup="menu" aria-expanded="false">
+      <div id="formlee-pet-wrapper" aria-live="polite" aria-atomic="true">
+        <div id="formlee-pet" role="button" tabindex="0" aria-label="Formlee Pet" aria-haspopup="menu" aria-expanded="false">
           <span class="pet-badge" aria-hidden="true"></span>
           <svg class="pet-face" viewBox="0 0 64 64" aria-hidden="true">
             <defs>
@@ -525,11 +536,11 @@
             <text x="32" y="30" text-anchor="middle" font-size="8" font-weight="800" fill="#4f46e5" font-family="ui-sans-serif, system-ui, sans-serif">F</text>
           </svg>
         </div>
-        <div id="formly-pet-panel" role="dialog" aria-modal="true" aria-label="Formlee assistant panel" tabindex="-1">
+        <div id="formlee-pet-panel" role="dialog" aria-modal="true" aria-label="Formlee assistant panel" tabindex="-1">
           <div class="panel-header">
             <div class="panel-brand" aria-hidden="true">F</div>
             <div class="panel-title">
-              <h2>Formlee Assistant</h2>
+              <h2>Formlee AI</h2>
               <p id="fp-page-line">Checking page…</p>
             </div>
             <button class="panel-close" aria-label="Close panel">×</button>
@@ -544,7 +555,7 @@
           <div class="panel-body" id="fp-panel-body"></div>
           <div class="panel-footer">Formlee never submits, pays, uploads, or bypasses CAPTCHA/OTP.</div>
         </div>
-        <div id="formly-pet-menu" role="menu" aria-label="Formlee actions"></div>
+        <div id="formlee-pet-menu" role="menu" aria-label="Formlee actions"></div>
       </div>
     `
   }
@@ -556,16 +567,16 @@
   async function mount() {
     if (host) return
     host = document.createElement('div')
-    host.id = 'formly-pet-host'
+    host.id = 'formlee-pet-host'
     host.style.all = 'initial'
     shadow = host.attachShadow({ mode: 'open' })
     shadow.innerHTML = '<style>' + buildStyles() + '</style>' + buildMarkup()
     document.body.appendChild(host)
 
-    wrapper = shadow.getElementById('formly-pet-wrapper')
-    petEl = shadow.getElementById('formly-pet')
-    panelEl = shadow.getElementById('formly-pet-panel')
-    menuEl = shadow.getElementById('formly-pet-menu')
+    wrapper = shadow.getElementById('formlee-pet-wrapper')
+    petEl = shadow.getElementById('formlee-pet')
+    panelEl = shadow.getElementById('formlee-pet-panel')
+    menuEl = shadow.getElementById('formlee-pet-menu')
 
     wirePetInteractions()
     wirePanelInteractions()
@@ -888,11 +899,19 @@
     if (typeof chrome === 'undefined' || !chrome.storage || !chrome.storage.local) return
     try {
       chrome.storage.onChanged.addListener((changes, area) => {
-        if (area !== 'local' || !changes || !changes.formleePetSurface) return
-        setPanelSurface(changes.formleePetSurface.newValue)
+        if (area !== 'local' || !changes) return
+        const change = changes[SURFACE_KEY] || changes[LEGACY_SURFACE_KEY]
+        if (!change) return
+        setPanelSurface(change.newValue)
       })
-      chrome.storage.local.get('formleePetSurface', result => {
-        setPanelSurface(result && result.formleePetSurface)
+      chrome.storage.local.get([SURFACE_KEY, LEGACY_SURFACE_KEY], result => {
+        const surface = result && (result[SURFACE_KEY] || result[LEGACY_SURFACE_KEY])
+        setPanelSurface(surface)
+        if (surface && !result[SURFACE_KEY]) {
+          chrome.storage.local.set({ [SURFACE_KEY]: surface }, () => {
+            chrome.storage.local.remove(LEGACY_SURFACE_KEY)
+          })
+        }
       })
     } catch (error) {
       // Without the surface flag the floating pet keeps its default
@@ -912,7 +931,7 @@
       wrapper.classList.add('reduce-motion')
       const style = document.createElement('style')
       style.id = 'fp-reduce-motion'
-      style.textContent = '#formly-pet-host * { animation: none !important; transition: none !important; }'
+      style.textContent = '#formlee-pet-host * { animation: none !important; transition: none !important; }'
       shadow.appendChild(style)
     } else {
       wrapper.classList.remove('reduce-motion')
@@ -1578,7 +1597,7 @@
     if (typeof chrome === 'undefined' || !chrome.runtime || !chrome.runtime.onMessage) return
     chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       if (!message || typeof message !== 'object') return
-      if (message.type === 'RANKORA_CLEAR_PRIVATE_STATE') {
+      if (message.type === 'FORMLEE_CLEAR_PRIVATE_STATE' || message.type === 'RANKORA_CLEAR_PRIVATE_STATE') {
         state.plan = null
         state.values = {}
         state.fillResult = null
@@ -1593,12 +1612,12 @@
         renderPanel()
         return
       }
-      if (message.type === 'RANKORA_SHOW_PET') {
+      if (message.type === 'FORMLEE_SHOW_PET' || message.type === 'RANKORA_SHOW_PET') {
         // An explicit SHOW_PET hands the floating pet back, clearing the
         // side panel's primary-surface claim.
         setPanelSurface('floating')
         try {
-          chrome.storage.local.set({ formleePetSurface: 'floating' })
+          chrome.storage.local.set({ [SURFACE_KEY]: 'floating' })
         } catch (surfaceError) {
           // Storage write is best-effort; the in-memory surface already flipped.
         }

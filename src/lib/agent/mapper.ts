@@ -149,7 +149,7 @@ export async function buildAgentFillPlan(
       canonical: null,
       ambiguous: [],
       needsReview: false,
-      reason: 'This page is not an approved Formly target; nothing will be filled.',
+      reason: 'This page is not an approved Formlee target; nothing will be filled.',
       firedByAi: false,
       group: descriptor.group,
       source: 'UNRESOLVED',
@@ -198,7 +198,7 @@ export async function buildAgentFillPlan(
       ? `${adapter.name} adapter: only documented ${adapter.fillablePageKinds.join('/')} labels are mapped. The local model is not used on this page.`
       : adapter.pageNotice(pageKind)
     : blockedPage
-      ? 'This page is not an approved Formly target; nothing will be filled.'
+      ? 'This page is not an approved Formlee target; nothing will be filled.'
       : null
 
   return {
