@@ -54,6 +54,7 @@ test('every extension context loads AgentCore before its consumers', async () =>
     'shared/agent-core.js',
     'shared/extension-policy.js',
     'credits.js',
+    'shared/message-response.js',
   ])
   assert.ok(background.indexOf('importScripts(') < background.indexOf('const AgentCore = globalThis.AgentCore'))
   assert.ok(background.indexOf('shared/agent-core.js') < background.indexOf('AgentCore.classifyUrl'))

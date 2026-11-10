@@ -14,6 +14,7 @@
 
   const AgentUI = typeof FormleeAgentUI !== 'undefined' ? FormleeAgentUI : null
   const PetCore = typeof FormleePetCore !== 'undefined' ? FormleePetCore : null
+  const TaskResponse = typeof FormleeTaskResponse !== 'undefined' ? FormleeTaskResponse : null
 
   // When the side panel is open it is the primary Pet surface: the floating
   // pet suppresses itself (see content/pet.js) until this flag flips back.
@@ -113,14 +114,25 @@
 
   function sendRuntime(message) {
     return new Promise(resolve => {
-      chrome.runtime.sendMessage(message, response => {
-        const error = chrome.runtime.lastError
-        if (error) {
-          resolve({ ok: false, error: error.message })
-          return
-        }
-        resolve(response || { ok: false, error: 'Empty response from extension.' })
-      })
+      try {
+        chrome.runtime.sendMessage(message, response => {
+          const error = chrome.runtime.lastError
+          if (error) {
+            const closed = /message port closed|receiving end does not exist/i.test(error.message || '')
+            resolve({
+              ok: false,
+              code: closed ? 'MESSAGE_CHANNEL_CLOSED' : 'MESSAGE_SEND_FAILED',
+              error: closed
+                ? 'The extension did not respond. Reload Formlee Apply Agent from chrome://extensions and retry.'
+                : error.message,
+            })
+            return
+          }
+          resolve(response || { ok: false, error: 'Empty response from extension.' })
+        })
+      } catch (error) {
+        resolve({ ok: false, code: 'MESSAGE_SEND_FAILED', error: 'Chrome could not send this request. Reload the extension and retry.' })
+      }
     })
   }
 
@@ -1123,17 +1135,23 @@
   async function refreshCurrentTask() {
     if (!state.taskRef) return
     const response = await sendRuntime({ type: 'GET_TASK', taskRef: state.taskRef })
-    if (!response || !response.ok || !response.task) return
-    state.task = response.task
+    const task = TaskResponse && TaskResponse.taskFrom(response)
+    if (!task) return
+    state.task = task
     renderTask()
   }
 
   async function loadTaskSteps() {
-    if (!state.taskRef) return
+    if (!state.taskRef || !state.task) return
     const response = await sendRuntime({ type: 'GET_TASK_STEPS', taskRef: state.taskRef })
-    if (response && response.ok && Array.isArray(response.steps)) {
-      state.task.steps = response.steps
-    }
+    const steps = TaskResponse && TaskResponse.stepsFrom(response)
+    if (steps) state.task.steps = steps
+  }
+
+  async function refreshTaskState() {
+    await refreshCurrentTask()
+    await loadTaskSteps()
+    renderTask()
   }
 
   function renderTask() {
@@ -1241,13 +1259,16 @@
     if (!els.taskObjectiveInput) return
     const objective = els.taskObjectiveInput.value.trim()
     if (!objective) return
+    state.taskRef = null
+    state.task = null
+    renderTask()
     els.taskCreateBtn.disabled = true
     setPetState('thinking', 'Creating task…')
     logActivity('info', 'Creating task: ' + objective)
 
     const response = await sendRuntime({ type: 'CREATE_TASK', objective })
     if (!response || !response.ok || !response.body || typeof response.body.taskRef !== 'string') {
-      const error = (response && response.body && response.body.error) || 'Could not create task.'
+      const error = TaskResponse ? TaskResponse.failureMessage(response, 'Could not create task.') : 'Could not create task.'
       setPetState('error', error)
       logActivity('error', error)
       els.taskCreateBtn.disabled = false
@@ -1261,6 +1282,9 @@
 
     // Plan immediately.
     await onPlanTask()
+    // Start means create, plan and execute. The server still pauses at every
+    // browser action that requires the student's confirmation.
+    if (state.task && state.task.status === 'READY') await onRunTask()
     startTaskPolling()
   }
 
@@ -1270,14 +1294,12 @@
     logActivity('info', 'Planning task…')
     const response = await sendRuntime({ type: 'PLAN_TASK', taskRef: state.taskRef })
     if (!response || !response.ok || !response.body) {
-      const error = (response && response.body && response.body.error) || 'Planning failed.'
+      const error = TaskResponse ? TaskResponse.failureMessage(response, 'Planning failed.') : 'Planning failed.'
       setPetState('error', error)
       logActivity('error', error)
       return
     }
-    state.task = response.body
-    await loadTaskSteps()
-    renderTask()
+    await refreshTaskState()
     logActivity('success', 'Task planned: ' + (response.body.message || 'Ready to run.'))
   }
 
@@ -1287,6 +1309,7 @@
     logActivity('info', 'Running task…')
     const response = await sendRuntime({ type: 'RUN_TASK', taskRef: state.taskRef })
     await handleTaskRunResponse(response)
+    startTaskPolling()
   }
 
   async function onResumeTask() {
@@ -1295,31 +1318,30 @@
     logActivity('info', 'Resuming task…')
     const response = await sendRuntime({ type: 'RUN_TASK', taskRef: state.taskRef, resume: true })
     await handleTaskRunResponse(response)
+    startTaskPolling()
   }
 
   async function handleTaskRunResponse(response) {
     if (!response || !response.ok || !response.body) {
-      const error = (response && response.body && response.body.error) || 'Task run failed.'
+      const error = TaskResponse ? TaskResponse.failureMessage(response, 'Task run failed.') : 'Task run failed.'
       setPetState('error', error)
       logActivity('error', error)
       return
     }
-    state.task = response.body
-    await loadTaskSteps()
-    renderTask()
+    await refreshTaskState()
 
     if (response.body.pendingBrowserAction) {
       logActivity('info', 'Task waiting for browser action: ' + response.body.pendingBrowserAction.type)
       return
     }
 
-    const status = response.body.status
+    const status = (state.task && state.task.status) || response.body.status
     if (status === 'COMPLETED' || status === 'PARTIALLY_COMPLETED') {
       logActivity('success', 'Task finished: ' + status.replace(/_/g, ' '))
     } else if (status === 'WAITING_FOR_STUDENT') {
       logActivity('info', 'Task waiting for you.')
     } else if (status === 'FAILED') {
-      logActivity('error', 'Task failed: ' + (response.body.message || ''))
+      logActivity('error', 'Task failed: ' + (response.body.message || (state.task && state.task.errorMessage) || ''))
     }
   }
 
@@ -1327,8 +1349,7 @@
     if (!state.taskRef) return
     const response = await sendRuntime({ type: 'PAUSE_TASK', taskRef: state.taskRef })
     if (response && response.ok && response.body) {
-      state.task = response.body
-      renderTask()
+      await refreshTaskState()
       logActivity('info', 'Task paused.')
     }
   }
@@ -1337,8 +1358,7 @@
     if (!state.taskRef) return
     const response = await sendRuntime({ type: 'CANCEL_TASK', taskRef: state.taskRef })
     if (response && response.ok && response.body) {
-      state.task = response.body
-      renderTask()
+      await refreshTaskState()
       logActivity('info', 'Task cancelled.')
     }
   }

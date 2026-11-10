@@ -9,7 +9,7 @@
  * historical Rankora header for older installed extension builds.
  */
 
-importScripts('shared/formlee-config.js', 'shared/agent-core.js', 'shared/extension-policy.js', 'credits.js')
+importScripts('shared/formlee-config.js', 'shared/agent-core.js', 'shared/extension-policy.js', 'credits.js', 'shared/message-response.js')
 
 const AgentCore = globalThis.AgentCore
 if (
@@ -17,7 +17,9 @@ if (
   globalThis.FormleeAgentCore !== AgentCore ||
   globalThis.RankoraAgentCore !== AgentCore ||
   typeof AgentCore.classifyUrl !== 'function' ||
-  typeof AgentCore.isFillablePageKind !== 'function'
+  typeof AgentCore.isFillablePageKind !== 'function' ||
+  !globalThis.FormleeMessageResponse ||
+  typeof globalThis.FormleeMessageResponse.respondAsync !== 'function'
 ) {
   throw new Error('Formlee Apply Agent initialization failed: shared AgentCore is unavailable. Ensure shared/agent-core.js loads before background.js.')
 }
@@ -917,8 +919,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   // Retry only the server-side finalization of a previously completed fill.
   // This never replays browser writes.
   Credits.flushPendingOperations().catch(() => {})
-  handleAgentMessage(message).then(sendResponse)
-  return true
+  return FormleeMessageResponse.respondAsync(() => handleAgentMessage(message), sendResponse)
 })
 
 chrome.runtime.onStartup.addListener(() => {
