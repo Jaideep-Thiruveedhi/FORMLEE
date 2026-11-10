@@ -9,10 +9,15 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '.
 const { resolveAgentProvider, validateOpenRouterModel } = await import(pathToFileURL(path.join(ROOT, 'src/lib/agent/provider-config.ts')).href)
 const { sanitizeModelMessages } = await import(pathToFileURL(path.join(ROOT, 'src/lib/agent/model-privacy.ts')).href)
 const { requestOpenRouter } = await import(pathToFileURL(path.join(ROOT, 'src/lib/agent/openrouter.ts')).href)
+const { parsePlanJson } = await import(pathToFileURL(path.join(ROOT, 'src/lib/agent/tasks/plan-parser.ts')).href)
 
 const envKeys = ['NODE_ENV', 'AGENT_MODEL_PROVIDER', 'OPENROUTER_API_KEY', 'OPENROUTER_MODEL', 'OLLAMA_MODEL']
 const originalEnv = Object.fromEntries(envKeys.map(key => [key, process.env[key]]))
 const originalFetch = globalThis.fetch
+const originalConsoleInfo = console.info
+const originalConsoleWarn = console.warn
+console.info = () => {}
+console.warn = () => {}
 
 function setProvider(overrides = {}) {
   for (const key of envKeys) delete process.env[key]
@@ -40,6 +45,8 @@ test.after(() => {
     else process.env[key] = originalEnv[key]
   }
   globalThis.fetch = originalFetch
+  console.info = originalConsoleInfo
+  console.warn = originalConsoleWarn
 })
 
 test('provider selection defaults to Ollama in development and production requires OpenRouter', () => {
@@ -79,16 +86,190 @@ test('successful OpenRouter completion parses structured tool calls and safe usa
     assert.equal(init.headers.Authorization, 'Bearer test-only-secret')
     posted = JSON.parse(init.body)
     return mockResponse(200, {
-      id: 'req_123', usage: { prompt_tokens: 21, completion_tokens: 9 },
-      choices: [{ message: { content: null, tool_calls: [{ id: 'call_1', function: { name: 'get_student_profile_summary', arguments: '{}' } }] } }],
+      id: 'req_123', provider: 'deepseek', usage: { prompt_tokens: 21, completion_tokens: 9 },
+      choices: [{ finish_reason: 'tool_calls', message: { content: null, tool_calls: [{ id: 'call_1', function: { name: 'get_student_profile_summary', arguments: '{}' } }] } }],
     })
   }
   const result = await callAgentModel({ messages: [{ role: 'user', content: 'Summarize my profile' }], tools: [] })
   assert.equal(result.ok, true)
   assert.deepEqual(result.toolCalls[0], { id: 'call_1', name: 'get_student_profile_summary', arguments: {} })
+  assert.equal(result.finishReason, 'tool_calls')
   assert.deepEqual(result.usage, { provider: 'openrouter', model: 'example/test-model', inputTokens: 21, outputTokens: 9, requestId: 'req_123' })
   assert.equal(posted.max_tokens, 1024)
   assert.equal(posted.stream, false)
+})
+
+test('ordinary agent requests serialize OpenAI-compatible function tools without changing default tool choice', async () => {
+  setProvider()
+  let posted
+  globalThis.fetch = async (_url, init) => {
+    posted = JSON.parse(init.body)
+    return mockResponse(200, { choices: [{ finish_reason: 'stop', message: { content: 'done' } }] })
+  }
+  const config = resolveAgentProvider()
+  const tools = [{ type: 'function', function: { name: 'read_profile', description: 'Read profile.', parameters: { type: 'object', properties: {} } } }]
+  await requestOpenRouter({ messages: [{ role: 'user', content: 'summarize' }], tools, model: config.model, apiKey: config.apiKey })
+  assert.deepEqual(posted.tools, tools)
+  assert.equal(Object.hasOwn(posted, 'tool_choice'), false, 'OpenRouter uses its documented default auto choice')
+  assert.equal(posted.stream, false)
+})
+
+test('normal assistant text follows the non-streaming chat-completions envelope', async () => {
+  setProvider()
+  globalThis.fetch = async () => mockResponse(200, {
+    id: 'chatcmpl_text_1', provider: 'deepseek',
+    choices: [{ finish_reason: 'stop', message: { role: 'assistant', content: 'Hello.' } }],
+  })
+  const result = await callAgentModel({ messages: [{ role: 'user', content: 'hello' }], tools: [] })
+  assert.equal(result.ok, true)
+  assert.equal(result.text, 'Hello.')
+  assert.deepEqual(result.toolCalls, [])
+  assert.equal(result.finishReason, 'stop')
+})
+
+test('task planning sends JSON mode without native tool definitions and parses the JSON content', async () => {
+  setProvider()
+  let posted
+  const planJson = JSON.stringify({ explanation: 'Read the profile.', steps: [{ toolName: 'get_student_profile_summary', description: 'Read saved profile summary.', args: {} }] })
+  globalThis.fetch = async (_url, init) => {
+    posted = JSON.parse(init.body)
+    return mockResponse(200, { choices: [{ finish_reason: 'stop', message: { role: 'assistant', content: planJson } }] })
+  }
+  const config = resolveAgentProvider()
+  const result = await requestOpenRouter({
+    messages: [{ role: 'system', content: 'Return one JSON object.' }, { role: 'user', content: 'Prepare my form.' }],
+    tools: [], responseFormat: { type: 'json_object' }, model: config.model, apiKey: config.apiKey,
+  })
+  assert.equal(result.ok, true)
+  assert.equal(posted.response_format.type, 'json_object')
+  assert.equal(Object.hasOwn(posted, 'tools'), false, 'planning does not offer native tool calls')
+  assert.equal(parsePlanJson(result.text).success, true)
+  const plannerSource = await (await import('node:fs/promises')).readFile(path.join(ROOT, 'src/lib/agent/tasks/planner.ts'), 'utf8')
+  assert.match(plannerSource, /tools: \[\]/)
+  assert.match(plannerSource, /responseFormat: \{ type: 'json_object' \}/)
+})
+
+test('malformed plan JSON is rejected by the plan parser instead of treated as a plan', () => {
+  assert.deepEqual(parsePlanJson('{"explanation":,"steps":[]}'), { success: false })
+  assert.deepEqual(parsePlanJson('not-json'), { success: false })
+})
+
+test('an empty OpenRouter completion fails with a specific safe error', async () => {
+  setProvider()
+  globalThis.fetch = async () => mockResponse(200, { id: 'empty_1', choices: [{ finish_reason: 'stop', message: { role: 'assistant', content: null } }] })
+  const result = await callAgentModel({ messages: [{ role: 'user', content: 'hello' }], tools: [] })
+  assert.equal(result.ok, false)
+  assert.equal(result.errorCode, 'EMPTY_RESPONSE')
+  assert.match(result.error, /empty completion/)
+})
+
+test('reasoning-only output is not mistaken for the assistant completion', async () => {
+  setProvider()
+  globalThis.fetch = async () => mockResponse(200, { choices: [{ finish_reason: 'stop', message: { role: 'assistant', content: null, reasoning: 'PRIVATE_REASONING' } }] })
+  const result = await callAgentModel({ messages: [{ role: 'user', content: 'hello' }], tools: [] })
+  assert.equal(result.errorCode, 'EMPTY_RESPONSE')
+  assert.doesNotMatch(result.error, /PRIVATE_REASONING/)
+})
+
+test('malformed tool-call JSON is rejected rather than converted into empty arguments', async () => {
+  setProvider()
+  globalThis.fetch = async () => mockResponse(200, {
+    choices: [{ finish_reason: 'tool_calls', message: { content: null, tool_calls: [{ id: 'call_bad', function: { name: 'read_profile', arguments: '{bad-json' } }] } }],
+  })
+  const result = await callAgentModel({ messages: [{ role: 'user', content: 'hello' }], tools: [] })
+  assert.equal(result.errorCode, 'MALFORMED_TOOL_ARGUMENTS')
+  assert.match(result.error, /malformed tool arguments/)
+})
+
+test('refusal responses fail safely without exposing the refusal body in diagnostics', async () => {
+  setProvider()
+  globalThis.fetch = async () => mockResponse(200, { choices: [{ finish_reason: 'stop', message: { role: 'assistant', content: null, refusal: 'PRIVATE_REFUSAL_TEXT' } }] })
+  const result = await callAgentModel({ messages: [{ role: 'user', content: 'hello' }], tools: [] })
+  assert.equal(result.errorCode, 'MODEL_REFUSAL')
+  assert.match(result.error, /refused/)
+  assert.doesNotMatch(result.error, /PRIVATE_REFUSAL_TEXT/)
+})
+
+test('provider error bodies use safe codes and never echo provider messages', async () => {
+  setProvider()
+  let diagnostic
+  const originalWarn = console.warn
+  console.warn = (_label, metadata) => { diagnostic = metadata }
+  try {
+    globalThis.fetch = async () => mockResponse(400, { error: { code: 'model_not_found', message: 'PRIVATE_PROVIDER_ERROR' } })
+    const result = await callAgentModel({ messages: [{ role: 'user', content: 'PRIVATE_PROMPT' }], tools: [] })
+    assert.equal(result.errorCode, 'model_not_found')
+    assert.match(result.error, /model_not_found/)
+    assert.doesNotMatch(result.error, /PRIVATE_PROVIDER_ERROR|PRIVATE_PROMPT/)
+    assert.equal(diagnostic.httpStatus, 400)
+    assert.equal(diagnostic.errorCode, 'model_not_found')
+  } finally {
+    console.warn = originalWarn
+  }
+})
+
+test('truncated completions are rejected before partial JSON can be used', async () => {
+  setProvider()
+  globalThis.fetch = async () => mockResponse(200, { choices: [{ finish_reason: 'length', message: { role: 'assistant', content: '{"explanation":' } }] })
+  const result = await callAgentModel({ messages: [{ role: 'user', content: 'hello' }], tools: [] })
+  assert.equal(result.errorCode, 'OUTPUT_TRUNCATED')
+  assert.match(result.error, /truncated/)
+  assert.equal(result.finishReason, 'length')
+})
+
+test('unexpected response structures are classified without logging response contents', async t => {
+  setProvider()
+  const cases = [
+    ['empty choices', { id: 'no_choices', choices: [] }, 'NO_CHOICES'],
+    ['content array', { id: 'array_content', choices: [{ message: { content: [{ type: 'text', text: 'do not log' }] } }] }, 'UNSUPPORTED_CONTENT_TYPE'],
+    ['non-array tool_calls', { id: 'bad_calls', choices: [{ message: { content: null, tool_calls: {} } }] }, 'MALFORMED_TOOL_CALLS'],
+    ['invalid JSON body', null, 'INVALID_JSON'],
+  ]
+  for (const [name, body, expectedCode] of cases) {
+    await t.test(name, async () => {
+      let diagnostic
+      const originalWarn = console.warn
+      console.warn = (_label, metadata) => { diagnostic = metadata }
+      try {
+        globalThis.fetch = async () => body === null
+          ? new Response('not-json', { status: 200 })
+          : mockResponse(200, body)
+        const result = await callAgentModel({ messages: [{ role: 'user', content: 'PRIVATE_PROMPT' }], tools: [] })
+        assert.equal(result.ok, false)
+        assert.equal(result.errorCode, expectedCode)
+        assert.equal(diagnostic.errorCode, expectedCode)
+        assert.equal(JSON.stringify(diagnostic).includes('PRIVATE_PROMPT'), false)
+      } finally {
+        console.warn = originalWarn
+      }
+    })
+  }
+})
+
+test('safe provider diagnostics contain only allowed metadata, never keys, prompts or model output', async () => {
+  setProvider()
+  let diagnostic
+  const originalInfo = console.info
+  console.info = (_label, metadata) => { diagnostic = metadata }
+  try {
+    globalThis.fetch = async () => mockResponse(200, {
+      id: 'chatcmpl_safe_1', provider: 'deepseek',
+      choices: [{ finish_reason: 'stop', message: { content: 'PRIVATE_MODEL_OUTPUT' } }],
+    })
+    const config = resolveAgentProvider()
+    await requestOpenRouter({ messages: [{ role: 'user', content: 'PRIVATE_PROMPT' }], tools: [], model: config.model, apiKey: 'PRIVATE_API_KEY' })
+    assert.deepEqual(Object.keys(diagnostic).sort(), ['contentExists', 'contentType', 'finishReason', 'httpStatus', 'model', 'providerId', 'responseId', 'toolCallCount'].sort())
+    const serialized = JSON.stringify(diagnostic)
+    assert.doesNotMatch(serialized, /PRIVATE_MODEL_OUTPUT|PRIVATE_PROMPT|PRIVATE_API_KEY/)
+    assert.equal(diagnostic.httpStatus, 200)
+    assert.equal(diagnostic.providerId, 'deepseek')
+    assert.equal(diagnostic.finishReason, 'stop')
+    assert.equal(diagnostic.contentExists, true)
+    assert.equal(diagnostic.contentType, 'string')
+    assert.equal(diagnostic.toolCallCount, 0)
+  } finally {
+    console.info = originalInfo
+  }
 })
 
 test('known student values and common contact data are removed before the provider request', async () => {
@@ -147,7 +328,8 @@ test('timeout and malformed provider responses fail safely without local fallbac
   globalThis.fetch = async () => { calls++; return mockResponse(200, { choices: [] }) }
   const malformed = await callAgentModel({ messages: [{ role: 'user', content: 'hello' }], tools: [] })
   assert.equal(malformed.ok, false)
-  assert.match(malformed.error, /malformed response/)
+  assert.equal(malformed.errorCode, 'NO_CHOICES')
+  assert.match(malformed.error, /no completion choices/)
   assert.equal(calls, 2)
 })
 

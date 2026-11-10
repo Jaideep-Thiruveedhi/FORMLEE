@@ -39,17 +39,26 @@ export interface AgentModelResponse {
   toolCalls: AgentToolCall[]
   nativeToolSupport: boolean
   error?: string
+  errorCode?: string
+  finishReason?: string
   usage?: { provider: 'ollama' | 'openrouter'; model: string; inputTokens?: number; outputTokens?: number; requestId?: string }
 }
 
 const MAX_PROMPT_CHARS = 12000
 const REQUEST_TIMEOUT_MS = 15000
 
-async function callOpenRouter(messages: AgentMessage[], tools: ToolDefinition[], signal?: AbortSignal, model?: string, apiKey?: string): Promise<AgentModelResponse> {
+async function callOpenRouter(
+  messages: AgentMessage[],
+  tools: ToolDefinition[],
+  signal?: AbortSignal,
+  model?: string,
+  apiKey?: string,
+  responseFormat?: { type: 'json_object' }
+): Promise<AgentModelResponse> {
   const result = await requestOpenRouter({
     messages: messages.map(({ role, content, tool_calls, tool_call_id }) => ({ role, content, ...(tool_calls ? { tool_calls: tool_calls.map(tc => ({ id: tc.id, type: 'function' as const, function: { name: tc.name, arguments: JSON.stringify(tc.arguments) } })) } : {}), ...(tool_call_id ? { tool_call_id } : {}) })),
     tools: toOllamaTools(tools).map((entry: any) => ({ type: 'function' as const, function: { name: entry.function.name, description: entry.function.description, parameters: entry.function.parameters } })),
-    model: model!, apiKey: apiKey!, signal,
+    model: model!, apiKey: apiKey!, signal, responseFormat,
   })
   return { ...result, nativeToolSupport: true }
 }
@@ -317,6 +326,7 @@ export async function callAgentModel(options: {
   signal?: AbortSignal
   tools?: ToolDefinition[]
   sensitiveValues?: string[]
+  responseFormat?: { type: 'json_object' }
 }): Promise<AgentModelResponse> {
   const tools = options.tools ?? listModelToolDefinitions()
   const messagesWithSystem = hasSystemMessage(options.messages)
@@ -332,7 +342,9 @@ export async function callAgentModel(options: {
     return { ok: false, text: null, toolCalls: [], nativeToolSupport: false, error: error instanceof Error ? error.message : 'Model configuration is invalid.' }
   }
 
-  if (config.provider === 'openrouter') return callOpenRouter(safeMessages, tools, options.signal, config.model, config.apiKey)
+  if (config.provider === 'openrouter') {
+    return callOpenRouter(safeMessages, tools, options.signal, config.model, config.apiKey, options.responseFormat)
+  }
 
   const native = await callOllamaChatNative(safeMessages, tools, options.signal)
   if (native.ok && (native.toolCalls.length > 0 || native.text)) {
